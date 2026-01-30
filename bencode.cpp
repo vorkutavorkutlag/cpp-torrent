@@ -3,23 +3,10 @@
 #include <vector>
 #include <string>
 #include <cstdint>
-
+#include <cassert>
 #include <fstream>
 
-struct BencodeValue;
-
-using BencodeList = std::vector<BencodeValue>;
-using BencodeDict = std::map<std::string, BencodeValue>;
-
-struct BencodeValue : std::variant<
-    std::int64_t,
-    std::string,
-    BencodeList,
-    BencodeDict,
-    std::monostate
-> {
-    using variant::variant;
-};
+#include "bencode.h"
 
 enum class BencodeType : char {
   INTEGER = 'i',
@@ -28,6 +15,42 @@ enum class BencodeType : char {
   END = 'e',
   DELIM = ':',
 };
+
+
+BencodeValue _decode_int(std::ifstream& file) {
+  std::int64_t int_val = 0;
+  char c;
+
+  while (file.get(c)) {
+    if (c == static_cast<char>(BencodeType::END)) break;
+    int_val *= 10;
+    int_val += c - '0';
+  }
+  
+  return BencodeValue{int_val};
+}
+
+BencodeValue _decode_bytestring(std::ifstream& file) {
+  char c;
+  file.unget(); // put digit back
+  
+  std::size_t length = 0;
+  std::string str;
+
+  // read len
+  while (file.get(c)) {
+    if (c == static_cast<char>(BencodeType::DELIM)) break;
+    length *= 10;
+    length += c - '0';
+  }
+
+  // read str
+  while(str.size() != length && file.get(c)) {
+    str += c;
+  }
+
+  return BencodeValue{str};
+}
 
 BencodeValue decode(std::ifstream& file) {
   char c;
@@ -42,15 +65,7 @@ BencodeValue decode(std::ifstream& file) {
 
     // i<integer>e
     case static_cast<char>(BencodeType::INTEGER): {
-      std::int64_t int_val = 0;
-
-      while (file.get(c)) {
-        if (c == static_cast<char>(BencodeType::END)) break;
-        int_val *= 10;
-        int_val += c - '0';
-      }
-      
-      return BencodeValue{int_val};
+      return _decode_int(file);
     }
     
     // l<items>e
@@ -69,34 +84,28 @@ BencodeValue decode(std::ifstream& file) {
     
     // d<pairs>e
     case static_cast<char>(BencodeType::DICT): {
-      // Would parse dict here
-      return BencodeValue{BencodeDict{}};
+      BencodeDict dict;
+
+      for (;;) {
+        BencodeValue key = decode(file);
+        
+        if (std::holds_alternative<std::monostate>(key)) break;
+
+        BencodeValue val = decode(file);
+
+        assert(std::holds_alternative<std::string>(key) && "Bencode dictionary key must be string!");
+
+        std::string str_key = std::get<std::string>(key);
+        dict[str_key] = val;
+      }
+      
+
+      return BencodeValue{dict};
     }
 
     // len:bytes
     default: { // BYTE_STRING 
-      file.unget(); // put digit back
-      
-      std::size_t length = 0;
-      std::string str;
-
-      // read len
-      while (file.get(c)) {
-        if (c == static_cast<char>(BencodeType::DELIM)) break;
-        length *= 10;
-        length += c - '0';
-      }
-
-      while(str.size() != length && file.get(c)) {
-        str += c;
-      }
-
-      return BencodeValue{str};
+      return _decode_bytestring(file);
     }
   }
-}
-
-int main() {
-
-  return 0;
 }

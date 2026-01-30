@@ -1,5 +1,40 @@
+#include "bencode.h"
 #include <iostream>
+#include <cassert>
+#include <filesystem>
+#include <fstream>
 
-int main() {
- return 0; 
+
+namespace fs = std::filesystem;
+
+#define ASSERT_ia(condition) \
+   do { \
+      assert(condition && "Invalid arguments. Correct usage: {executable} {torrent} {path}"); \
+   } while (0)
+
+#define ASSERT_if(condition) \
+   do { \
+      assert(condition && "Failed to properly read torrent file."); \
+   } while (0)
+
+int main(int argc, char *argv[]) {
+  ASSERT_ia(argc == 3);
+
+  std::string filename = argv[1];
+  std::string dest_dir = argv[2];
+
+  ASSERT_ia(fs::is_regular_file(filename));
+  ASSERT_ia(fs::is_directory(dest_dir));
+
+  std::ifstream file(filename);
+  BencodeValue decoded = decode(file);
+
+  ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
+
+  BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
+
+  std::cout << "announce: " << std::get<std::string>(torrent_dict["announce"]) << std::endl;
+  // std::cout << "Downloading " << argv[1] << " Into " << argv[2] << std::endl;
+
+  return 0;
 }
