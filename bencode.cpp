@@ -15,7 +15,8 @@ struct BencodeValue : std::variant<
     std::int64_t,
     std::string,
     BencodeList,
-    BencodeDict
+    BencodeDict,
+    std::monostate
 > {
     using variant::variant;
 };
@@ -25,6 +26,7 @@ enum class BencodeType : char {
   LIST = 'l',
   DICT = 'd',
   END = 'e',
+  DELIM = ':',
 };
 
 BencodeValue decode(std::ifstream& file) {
@@ -33,9 +35,15 @@ BencodeValue decode(std::ifstream& file) {
   
   switch(c) {
     
+    // e (for recursive purpose)
+    case static_cast<char>(BencodeType::END): {
+        return BencodeValue{std::monostate{}};
+    }
+
+    // i<integer>e
     case static_cast<char>(BencodeType::INTEGER): {
       std::int64_t int_val = 0;
-      
+
       while (file.get(c)) {
         if (c == static_cast<char>(BencodeType::END)) break;
         int_val *= 10;
@@ -45,19 +53,46 @@ BencodeValue decode(std::ifstream& file) {
       return BencodeValue{int_val};
     }
     
-    case static_cast<char>(BencodeType::LIST):
-      // Would parse list here
-      return BencodeValue{BencodeList{}};
+    // l<items>e
+    case static_cast<char>(BencodeType::LIST): {
+      BencodeList list;
+
+      for (;;) {
+        BencodeValue val = decode(file);
+        if (std::holds_alternative<std::monostate>(val)) break;
+
+        list.push_back(val);
+      }
+      
+      return BencodeValue{list};
+    }
     
-    case static_cast<char>(BencodeType::DICT):
+    // d<pairs>e
+    case static_cast<char>(BencodeType::DICT): {
       // Would parse dict here
       return BencodeValue{BencodeDict{}};
-    
-    default: // BYTE_STRING
-      file.unget(); // Put digit back
-      // Would parse string here
-      return BencodeValue{std::string{}};
+    }
+
+    // len:bytes
+    default: { // BYTE_STRING 
+      file.unget(); // put digit back
       
+      std::size_t length = 0;
+      std::string str;
+
+      // read len
+      while (file.get(c)) {
+        if (c == static_cast<char>(BencodeType::DELIM)) break;
+        length *= 10;
+        length += c - '0';
+      }
+
+      while(str.size() != length && file.get(c)) {
+        str += c;
+      }
+
+      return BencodeValue{str};
+    }
   }
 }
 
