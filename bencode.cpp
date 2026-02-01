@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cassert>
 #include <fstream>
+#include <iostream>
 
 #include "bencode.h"
 
@@ -108,4 +109,25 @@ BencodeValue decode(std::ifstream& file) {
       return _decode_bytestring(file);
     }
   }
+}
+
+void bencode_dump(BencodeValue val) {
+  if (std::holds_alternative<int64_t>(val)) {
+    std::cout << std::get<int64_t>(val) << std::endl;
+  } else if (std::holds_alternative<std::string>(val)) {
+    std::cout << std::get<std::string>(val) << std::endl;
+    
+  } else if (std::holds_alternative<BencodeList>(val)) {
+    for (const auto i : std::get<BencodeList>(val)) {
+      bencode_dump(i);
+    }
+  
+  } else if (std::holds_alternative<BencodeDict>(val)) {
+    BencodeDict dict = std::get<BencodeDict>(val);
+    for(auto iter = dict.begin(); iter != dict.end(); ++iter) {
+        std::cout << iter->first << std::endl;
+        bencode_dump(iter->second);
+      }
+  }
+
 }

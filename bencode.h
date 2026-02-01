@@ -23,6 +23,7 @@ struct BencodeValue : std::variant<
     using variant::variant;
 };
 
+void bencode_dump(BencodeValue val);
 BencodeValue decode(std::ifstream& file);
 
 #endif

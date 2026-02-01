@@ -34,6 +34,16 @@ int main(int argc, char *argv[]) {
   BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
 
   std::cout << "announce: " << std::get<std::string>(torrent_dict["announce"]) << std::endl;
+
+  bencode_dump(torrent_dict);
+
+  // BencodeList ANL = std::get<BencodeList>(torrent_dict["announce-list"]);
+  // std::cout << "Okay..." << std::endl;
+  // for (const auto & announce_url : ANL ) {
+  //   std::cout << "Holds alt? " << std::holds_alternative<BencodeList>(announce_url) << std::endl;
+  //   std::cout << "announce: " << std::get<std::string>(announce_url) << std::endl;
+  // }
+
   // std::cout << "Downloading " << argv[1] << " Into " << argv[2] << std::endl;
 
   return 0;
