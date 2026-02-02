@@ -1,5 +1,3 @@
-#include "bencode.h"
-#include "constants.h"
 #include <iostream>
 #include <cassert>
 #include <filesystem>
@@ -8,6 +6,11 @@
 #include <thread>
 #include <mutex>
 #include <set>
+
+#include "bencode.h"
+#include "constants.h"
+#include "tracker.h"
+
 
 namespace fs = std::filesystem;
 
@@ -31,23 +34,23 @@ int main(int argc, char *argv[]) {
   ASSERT_ia(fs::is_directory(dest_dir));
 
   std::ifstream file(filename);
-  std::string raw_infohash;
+  std::string raw_info;
   bool _IH_parse_condition = false;
   
-  BencodeValue decoded = decode(file, raw_infohash, _IH_parse_condition);
-  std::vector<unsigned char> infohash = infohash_bytes(raw_infohash);
-  std::string hex_ih = infohash_hex(raw_infohash);
+  BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
+  std::vector<unsigned char> infohash = infohash_bytes(raw_info);
+  std::string hex_ih = infohash_hex(raw_info);
 
   ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
 
   BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
 
-  // for (const auto & i : infohash) {
-  //   std::cout << i;
-  // }
-  // std::cout << std::endl;
+  std::set<std::string> trackers = extract_trackers(torrent_dict);
 
   std::cout << hex_ih << std::endl;
+  for (const auto & i : trackers) {
+    std::cout << i << std::endl;
+  }
 
   return 0;
 }

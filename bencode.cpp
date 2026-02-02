@@ -167,5 +167,5 @@ std::string infohash_hex(const std::string & raw_info) {
           << static_cast<int>(hash[i]);
   }
 
-  return ss.str();
+  return ss.str().substr(0, INFOHASH_SIZE);
 }

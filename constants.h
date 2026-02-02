@@ -4,6 +4,8 @@
 #include <string>
 #include <map>
 
+#define INFOHASH_SIZE 20
+
 enum TF_Key {
   ANNOUNCE,
   ANNOUNCE_LIST, // Common, but not guaranteed
