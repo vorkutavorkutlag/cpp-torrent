@@ -1,30 +1,29 @@
-#include <iostream>
 #include <cassert>
 #include <filesystem>
 #include <fstream>
-
-#include <thread>
+#include <iostream>
 #include <mutex>
 #include <set>
+#include <thread>
 
 #include "bencode.h"
 #include "constants.h"
 #include "tracker.h"
 
-
 namespace fs = std::filesystem;
 
-#define ASSERT_ia(condition) \
-   do { \
-      assert(condition && "Invalid arguments. Correct usage: {executable} {torrent} {path}"); \
-   } while (0)
+#define ASSERT_ia(condition)                                                   \
+  do {                                                                         \
+    assert(condition &&                                                        \
+           "Invalid arguments. Correct usage: {executable} {torrent} {path}"); \
+  } while (0)
 
-#define ASSERT_if(condition) \
-   do { \
-      assert(condition && "Failed to properly read torrent file."); \
-   } while (0)
+#define ASSERT_if(condition)                                      \
+  do {                                                            \
+    assert(condition && "Failed to properly read torrent file."); \
+  } while (0)
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   ASSERT_ia(argc == 3);
 
   std::string filename = argv[1];
@@ -36,7 +35,7 @@ int main(int argc, char *argv[]) {
   std::ifstream file(filename);
   std::string raw_info;
   bool _IH_parse_condition = false;
-  
+
   BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
   std::vector<unsigned char> infohash = infohash_bytes(raw_info);
   std::string hex_ih = infohash_hex(raw_info);
@@ -48,7 +47,7 @@ int main(int argc, char *argv[]) {
   std::set<std::string> trackers = extract_trackers(torrent_dict);
 
   std::cout << hex_ih << std::endl;
-  for (const auto & i : trackers) {
+  for (const auto& i : trackers) {
     std::cout << i << std::endl;
   }
 
