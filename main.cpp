@@ -1,9 +1,13 @@
 #include "bencode.h"
+#include "constants.h"
 #include <iostream>
 #include <cassert>
 #include <filesystem>
 #include <fstream>
 
+#include <thread>
+#include <mutex>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -27,24 +31,23 @@ int main(int argc, char *argv[]) {
   ASSERT_ia(fs::is_directory(dest_dir));
 
   std::ifstream file(filename);
-  BencodeValue decoded = decode(file);
+  std::string raw_infohash;
+  bool _IH_parse_condition = false;
+  
+  BencodeValue decoded = decode(file, raw_infohash, _IH_parse_condition);
+  std::vector<unsigned char> infohash = infohash_bytes(raw_infohash);
+  std::string hex_ih = infohash_hex(raw_infohash);
 
   ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
 
   BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
 
-  std::cout << "announce: " << std::get<std::string>(torrent_dict["announce"]) << std::endl;
-
-  bencode_dump(torrent_dict);
-
-  // BencodeList ANL = std::get<BencodeList>(torrent_dict["announce-list"]);
-  // std::cout << "Okay..." << std::endl;
-  // for (const auto & announce_url : ANL ) {
-  //   std::cout << "Holds alt? " << std::holds_alternative<BencodeList>(announce_url) << std::endl;
-  //   std::cout << "announce: " << std::get<std::string>(announce_url) << std::endl;
+  // for (const auto & i : infohash) {
+  //   std::cout << i;
   // }
+  // std::cout << std::endl;
 
-  // std::cout << "Downloading " << argv[1] << " Into " << argv[2] << std::endl;
+  std::cout << hex_ih << std::endl;
 
   return 0;
 }

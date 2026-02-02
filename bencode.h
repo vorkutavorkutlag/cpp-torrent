@@ -23,7 +23,22 @@ struct BencodeValue : std::variant<
     using variant::variant;
 };
 
+enum class BencodeChar : char {
+  INTEGER = 'i',
+  LIST = 'l',
+  DICT = 'd',
+  END = 'e',
+  DELIM = ':',
+};
+
+
 void bencode_dump(BencodeValue val);
-BencodeValue decode(std::ifstream& file);
+// std::string trim_raw_info(std::string & raw_infohash);
+std::vector<unsigned char> infohash_bytes(const std::string & raw_infohash);
+std::string infohash_hex(const std::string & raw_infohash);
+
+BencodeValue decode(std::ifstream& file, std::string & raw_infohash, bool & _IH_parse_condition);
+std::vector<unsigned char> infohash(std::ifstream& file);
+
 
 #endif
