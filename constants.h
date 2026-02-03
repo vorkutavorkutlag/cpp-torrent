@@ -5,6 +5,7 @@
 #include <string>
 
 #define INFOHASH_SIZE 20
+#define PEERID_SIZE 20
 
 enum TF_Key {
   ANNOUNCE,

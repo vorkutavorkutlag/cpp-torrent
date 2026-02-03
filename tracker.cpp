@@ -1,11 +1,10 @@
-#include "tracker.h"
-
 #include <map>
 #include <set>
 #include <variant>
 
 #include "bencode.h"
 #include "constants.h"
+#include "tracker.h"
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
   std::set<std::string> trackers;
@@ -21,3 +20,5 @@ std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
 
   return trackers;
 }
+
+
