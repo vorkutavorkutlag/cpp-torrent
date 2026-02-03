@@ -20,7 +20,7 @@ std::string generate_peerid() {
 
   srand(time(NULL) * getpid());
 
-  for (int i = 0; i < len; ++i) {
+  for (int i = 0; i < PEERID_SIZE; ++i) {
     tmp_s += alnum[rand() % (sizeof(alnum) - 1)];
   }
 

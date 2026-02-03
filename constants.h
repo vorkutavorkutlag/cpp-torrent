@@ -6,6 +6,10 @@
 
 #define INFOHASH_SIZE 20
 #define PEERID_SIZE 20
+#define PROTOCOL_ID 0x41727101980
+
+// per bytes
+#define UDP_CONREQ_LEN 16
 
 enum TF_Key {
   ANNOUNCE,
@@ -31,5 +35,9 @@ inline std::map<TF_Key, std::string> TF_String = {
     {FNAME, "name"},
     {PIECE_LENGTH, "piece-length"},
     {PIECES, "pieces"}};
+
+enum class UDP : uint16_t {
+  ACTION = 0,
+};
 
 #endif

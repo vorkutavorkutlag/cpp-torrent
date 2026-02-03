@@ -1,49 +1,18 @@
 #include "tracker.h"
 
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <string.h>
+#include <unistd.h>
+
+#include <ctime>
 #include <map>
 #include <set>
 #include <variant>
 
 #include "bencode.h"
 #include "constants.h"
-
-struct UDP_ConnectRequest {
-  int64_t protocol_id;  // magic constant = 0x41727101980
-  int32_t action;
-  int32_t transaction_id;
-};
-
-struct UDP_ConnectResponse {
-  int32_t action;
-  int32_t transaction_id;
-  int64_t connection_id;
-};
-
-struct UDP_IPv4_AnnounceRequest {
-  int64_t connection_id;
-  int32_t action;
-  int32_t transaction_id;
-  unsigned char info_hash[INFOHASH_SIZE];
-  char peer_id[PEERID_SIZE];
-  int64_t downloaded;
-  int64_t left;
-  int64_t uploaded;
-  int32_t event;       // 0: none; 1: completed; 2: started; 3: stopped
-  int32_t ip_address;  // 0 default
-  int32_t key;
-  int32_t num_want;  // -1 default
-  int16_t port;
-};
-
-struct UDP_IPv4_AnnounceResponse {
-  int32_t action;  // 1 announce
-  int32_t transaction_id;
-  int32_t interval;
-  int32_t leechers;
-  int32_t seeders;
-  std::vector<int32_t> ip_address;  // of size <seeders>
-  std::vector<int16_t> tcp_port;    // of size <seeders>
-};
+#include "sys/socket.h"
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
   std::set<std::string> trackers;
@@ -64,4 +33,38 @@ int determine_tracker_type(std::string url) {
   if (url.rfind("udp", 0) == 0) return 1;
   if (url.rfind("http", 0) == 0 || url.rfind("https", 0)) return 2;
   return -1;
+}
+
+int32_t generate_rand_transaction_id() {
+  srand(time(NULL) * getpid());
+  return rand();
+}
+
+void _send_conreq_udp(int sockfd, UDP_ConnectRequest conreq,
+                      sockaddr_in* servaddr) {
+  std::string payload;
+  payload += conreq.protocol_id + conreq.action + conreq.transaction_id;
+  const char* payload_cstr = payload.c_str();
+
+  sendto(sockfd, payload_cstr, strlen(payload_cstr), MSG_CONFIRM,
+         (const struct sockaddr*)servaddr, sizeof(servaddr));
+}
+
+void connect_udp(const char* ip_address, const int port) {
+  int sockfd;
+  struct sockaddr_in servaddr;
+
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  memset(&servaddr, 0, sizeof(servaddr));
+
+  servaddr.sin_family = AF_INET;  // IPv4
+  servaddr.sin_port = htons(port);
+  servaddr.sin_addr.s_addr = inet_addr(ip_address);
+
+  socklen_t sock_len = sizeof(servaddr);
+
+  struct UDP_ConnectRequest conreq = {PROTOCOL_ID,
+                                          static_cast<int32_t>(UDP::ACTION),
+                                          generate_rand_transaction_id()};
+  _send_conreq_udp(sockfd, conreq, &servaddr);
 }
