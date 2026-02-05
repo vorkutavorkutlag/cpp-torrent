@@ -46,6 +46,17 @@ struct UDP_IPv4_AnnounceResponse {
   std::vector<int16_t> tcp_port;    // of size <seeders>
 };
 
+std::uint64_t ntohll(std::uint64_t value) {
+    return
+        ((value & 0x00000000000000FFULL) << 56) |
+        ((value & 0x000000000000FF00ULL) << 40) |
+        ((value & 0x0000000000FF0000ULL) << 24) |
+        ((value & 0x00000000FF000000ULL) << 8 ) |
+        ((value & 0x000000FF00000000ULL) >> 8 ) |
+        ((value & 0x0000FF0000000000ULL) >> 24) |
+        ((value & 0x00FF000000000000ULL) >> 40) |
+        ((value & 0xFF00000000000000ULL) >> 56);
+}
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict);
 

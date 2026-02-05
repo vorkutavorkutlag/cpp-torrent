@@ -1,10 +1,11 @@
 #include "tracker.h"
 
 #include <arpa/inet.h>
-#include <netinet/in.h>
+#include <netdb.h>
 #include <string.h>
 #include <unistd.h>
 
+#include <cstring>
 #include <ctime>
 #include <map>
 #include <set>
@@ -13,6 +14,11 @@
 #include "bencode.h"
 #include "constants.h"
 #include "sys/socket.h"
+
+struct HostPortPair {
+  std::string host;
+  std::string port;
+};
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
   std::set<std::string> trackers;
@@ -46,25 +52,63 @@ void _send_conreq_udp(int sockfd, UDP_ConnectRequest conreq,
   payload += conreq.protocol_id + conreq.action + conreq.transaction_id;
   const char* payload_cstr = payload.c_str();
 
+  socklen_t len = sizeof(*servaddr);
   sendto(sockfd, payload_cstr, strlen(payload_cstr), MSG_CONFIRM,
-         (const struct sockaddr*)servaddr, sizeof(servaddr));
+         (const struct sockaddr*)servaddr, len);
 }
 
-void connect_udp(const char* ip_address, const int port) {
-  int sockfd;
-  struct sockaddr_in servaddr;
+UDP_ConnectResponse _recv_conresp_udp(int sockfd, sockaddr_in* servaddr) {
+  uint8_t buffer[static_cast<size_t>(UDP_BUFFER::CONNECT_RESPONSE)];
+  std::uint32_t action;
+  std::uint32_t transaction_id;
+  std::uint64_t connection_id;
 
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  memset(&servaddr, 0, sizeof(servaddr));
 
-  servaddr.sin_family = AF_INET;  // IPv4
-  servaddr.sin_port = htons(port);
-  servaddr.sin_addr.s_addr = inet_addr(ip_address);
+  socklen_t len = sizeof(*servaddr);
+  ssize_t n = recvfrom(
+      sockfd, buffer, static_cast<size_t>(UDP_BUFFER::CONNECT_RESPONSE),
+      MSG_WAITALL, (struct sockaddr  *)servaddr, &len);
 
-  socklen_t sock_len = sizeof(servaddr);
+      std::memcpy(&action, buffer + 0, 4);
+  std::memcpy(&transaction_id, buffer + 4, 4);
+  std::memcpy(&connection_id, buffer + 8, 8);
+
+  action = ntohl(action);
+  transaction_id = ntohl(transaction_id);
+  connection_id = ntohll(connection_id);
+}
+
+HostPortPair parse_udp(std::string url) {
+  auto host_start = url.find("://") + 3;
+  auto port_start = url.find(':', host_start);
+  auto path_start = url.find('/', port_start);
+
+  std::string host = url.substr(host_start, port_start - host_start);
+  std::string port = url.substr(port_start + 1, path_start - port_start - 1);
+
+  return {host, port};
+}
+
+int connect_udp(std::string url) {
+  int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+
+  sockaddr_in servaddr{};
+  servaddr.sin_family = AF_INET;
+
+  addrinfo hints{}, *res;
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_DGRAM;
+
+  HostPortPair hp = parse_udp(url);
+
+  int err = getaddrinfo(hp.host.c_str(), hp.port.c_str(), &hints, &res);
+  if (err != 0) return -1;
+
+  servaddr = *reinterpret_cast<sockaddr_in*>(res->ai_addr);
 
   struct UDP_ConnectRequest conreq = {PROTOCOL_ID,
-                                          static_cast<int32_t>(UDP::ACTION),
-                                          generate_rand_transaction_id()};
+                                      static_cast<int32_t>(UDP_ACTION::CONNECT),
+                                      generate_rand_transaction_id()};
+
   _send_conreq_udp(sockfd, conreq, &servaddr);
 }

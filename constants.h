@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <cstdint>
 
 #define INFOHASH_SIZE 20
 #define PEERID_SIZE 20
@@ -36,8 +37,12 @@ inline std::map<TF_Key, std::string> TF_String = {
     {PIECE_LENGTH, "piece-length"},
     {PIECES, "pieces"}};
 
-enum class UDP : uint16_t {
-  ACTION = 0,
+enum class UDP_ACTION : uint16_t {
+  CONNECT = 0,
+};
+
+enum class UDP_BUFFER : size_t {
+  CONNECT_RESPONSE = 16,
 };
 
 #endif
