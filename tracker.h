@@ -9,15 +9,15 @@
 #include "constants.h"
 
 struct UDP_ConnectRequest {
-  int64_t protocol_id;  // magic constant = 0x41727101980
-  int32_t action;       // connect = 0
-  int32_t transaction_id;
+  uint64_t protocol_id;  // magic constant = 0x41727101980
+  uint32_t action;       // connect = 0
+  uint32_t transaction_id;
 };
 
 struct UDP_ConnectResponse {
-  int32_t action;
-  int32_t transaction_id;
-  int64_t connection_id;
+  uint32_t action;
+  uint32_t transaction_id;
+  uint64_t connection_id;
 };
 
 struct UDP_IPv4_AnnounceRequest {
@@ -37,11 +37,11 @@ struct UDP_IPv4_AnnounceRequest {
 };
 
 struct UDP_IPv4_AnnounceResponse {
-  int32_t action;  // 1 announce
-  int32_t transaction_id;
-  int32_t interval;
-  int32_t leechers;
-  int32_t seeders;
+  uint32_t action;  // 1 announce
+  uint32_t transaction_id;
+  uint32_t interval;
+  uint32_t leechers;
+  uint32_t seeders;
   std::vector<int32_t> ip_address;  // of size <seeders>
   std::vector<int16_t> tcp_port;    // of size <seeders>
 };

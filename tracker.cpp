@@ -14,6 +14,7 @@
 #include "bencode.h"
 #include "constants.h"
 #include "sys/socket.h"
+#include <iostream>
 
 struct HostPortPair {
   std::string host;
@@ -41,7 +42,7 @@ int determine_tracker_type(std::string url) {
   return -1;
 }
 
-int32_t generate_rand_transaction_id() {
+uint32_t generate_rand_transaction_id() {
   srand(time(NULL) * getpid());
   return rand();
 }
@@ -118,4 +119,14 @@ int connect_udp(std::string url) {
                                       generate_rand_transaction_id()};
 
   _send_conreq_udp(sockfd, conreq, &servaddr);
+
+  UDP_ConnectResponse conresp = _recv_conresp_udp(sockfd, &servaddr);
+  std::cout << conresp.action << "\n" << conresp.transaction_id << "\n" << conresp.connection_id << std::endl;;
+
+  return sockfd;
+}
+
+int main(int argc, char *argv[]) {
+  connect_udp(argv[1]);
+  return 0;
 }
