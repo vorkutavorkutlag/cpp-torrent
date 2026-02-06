@@ -46,6 +46,9 @@ struct UDP_IPv4_AnnounceResponse {
   std::vector<int16_t> tcp_port;    // of size <seeders>
 };
 
+
+#define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))
+
 std::uint64_t ntohll(std::uint64_t value) {
     return
         ((value & 0x00000000000000FFULL) << 56) |

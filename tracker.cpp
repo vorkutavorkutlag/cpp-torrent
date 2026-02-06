@@ -63,19 +63,20 @@ UDP_ConnectResponse _recv_conresp_udp(int sockfd, sockaddr_in* servaddr) {
   std::uint32_t transaction_id;
   std::uint64_t connection_id;
 
-
   socklen_t len = sizeof(*servaddr);
-  ssize_t n = recvfrom(
-      sockfd, buffer, static_cast<size_t>(UDP_BUFFER::CONNECT_RESPONSE),
-      MSG_WAITALL, (struct sockaddr  *)servaddr, &len);
+  ssize_t n = recvfrom(sockfd, buffer,
+                       static_cast<size_t>(UDP_BUFFER::CONNECT_RESPONSE),
+                       MSG_WAITALL, (struct sockaddr*)servaddr, &len);
 
-      std::memcpy(&action, buffer + 0, 4);
+  std::memcpy(&action, buffer + 0, 4);
   std::memcpy(&transaction_id, buffer + 4, 4);
   std::memcpy(&connection_id, buffer + 8, 8);
 
   action = ntohl(action);
   transaction_id = ntohl(transaction_id);
   connection_id = ntohll(connection_id);
+
+  return (UDP_ConnectRequest) {action, transaction_id, connection_id};
 }
 
 HostPortPair parse_udp(std::string url) {

@@ -7,7 +7,7 @@
 
 #define INFOHASH_SIZE 20
 #define PEERID_SIZE 20
-#define PROTOCOL_ID 0x41727101980
+#define PROTOCOL_ID 0x41727101980ULL
 
 // per bytes
 #define UDP_CONREQ_LEN 16
