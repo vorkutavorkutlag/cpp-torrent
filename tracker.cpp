@@ -46,15 +46,21 @@ int32_t generate_rand_transaction_id() {
   return rand();
 }
 
-void _send_conreq_udp(int sockfd, UDP_ConnectRequest conreq,
+void _send_conreq_udp(int sockfd, const UDP_ConnectRequest& conreq,
                       sockaddr_in* servaddr) {
-  std::string payload;
-  payload += conreq.protocol_id + conreq.action + conreq.transaction_id;
-  const char* payload_cstr = payload.c_str();
+  std::uint8_t buffer[16];
+
+  std::uint64_t protocol_id = htonll(conreq.protocol_id);
+  std::uint32_t action = htonl(conreq.action);
+  std::uint32_t transaction_id = htonl(conreq.transaction_id);
+
+  std::memcpy(buffer + 0, &protocol_id, 8);
+  std::memcpy(buffer + 8, &action, 4);
+  std::memcpy(buffer + 12, &transaction_id, 4);
 
   socklen_t len = sizeof(*servaddr);
-  sendto(sockfd, payload_cstr, strlen(payload_cstr), MSG_CONFIRM,
-         (const struct sockaddr*)servaddr, len);
+  sendto(sockfd, buffer, sizeof(buffer), 0,
+         reinterpret_cast<sockaddr*>(servaddr), len);
 }
 
 UDP_ConnectResponse _recv_conresp_udp(int sockfd, sockaddr_in* servaddr) {
@@ -76,7 +82,7 @@ UDP_ConnectResponse _recv_conresp_udp(int sockfd, sockaddr_in* servaddr) {
   transaction_id = ntohl(transaction_id);
   connection_id = ntohll(connection_id);
 
-  return (UDP_ConnectRequest) {action, transaction_id, connection_id};
+  return (UDP_ConnectResponse){action, transaction_id, connection_id};
 }
 
 HostPortPair parse_udp(std::string url) {
