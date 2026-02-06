@@ -38,11 +38,15 @@ inline std::map<TF_Key, std::string> TF_String = {
     {PIECES, "pieces"}};
 
 enum class UDP_ACTION : uint16_t {
-  CONNECT = 0,
+  CONNECT  = 0,
+  ANNOUNCE = 1,
 };
 
 enum class UDP_BUFFER : size_t {
-  CONNECT_RESPONSE = 16,
+  CONNECT_REQUEST        =  16,
+  CONNECT_RESPONSE       =  16,
+  ANNOUNCE_REQUEST       =  98,
+  ANNOUNCE_RESPONSE_HEAD =  20,
 };
 
 #endif

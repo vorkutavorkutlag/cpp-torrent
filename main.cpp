@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
   bool _IH_parse_condition = false;
 
   BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
-  std::vector<unsigned char> infohash = infohash_bytes(raw_info);
+  std::vector<uint8_t> infohash = infohash_bytes(raw_info);
   std::string hex_ih = infohash_hex(raw_info);
 
   ASSERT_if(std::holds_alternative<BencodeDict>(decoded));

@@ -25,7 +25,7 @@ struct UDP_IPv4_AnnounceRequest {
   int32_t action;
   int32_t transaction_id;
   unsigned char info_hash[INFOHASH_SIZE];
-  char peer_id[PEERID_SIZE];
+  unsigned char peer_id[PEERID_SIZE];
   int64_t downloaded;
   int64_t left;
   int64_t uploaded;
@@ -42,10 +42,13 @@ struct UDP_IPv4_AnnounceResponse {
   uint32_t interval;
   uint32_t leechers;
   uint32_t seeders;
-  std::vector<int32_t> ip_address;  // of size <seeders>
-  std::vector<int16_t> tcp_port;    // of size <seeders>
+  std::vector<uint32_t> ip_address;  // of size <seeders>
+  std::vector<uint16_t> tcp_port;    // of size <seeders>
 };
 
+struct AnnounceInformation {
+
+};
 
 #define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))
 
@@ -63,9 +66,9 @@ std::uint64_t ntohll(std::uint64_t value) {
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict);
 
-/*1 - UDP
-  2 - HTTP/HTTPS
-  -1 - UNKNOWN */
+/*1 == UDP
+  2 == HTTP/HTTPS
+  -1 == UNKNOWN */
 int determine_tracker_type(std::string url);
 
 #endif
