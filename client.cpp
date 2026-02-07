@@ -6,6 +6,11 @@
 
 #include "constants.h"
 
+struct Peer {
+  uint32_t ip;
+  uint16_t port;
+};
+
 /* Sets new seed for random and
   randomly generates PEERID_SIZE length string
   of alphanumeric characters.*/

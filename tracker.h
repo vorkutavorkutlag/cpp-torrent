@@ -8,6 +8,7 @@
 
 #include "bencode.h"
 #include "constants.h"
+#include "client.h"
 
 struct UDP_ConnectRequest {
   uint64_t protocol_id;  // magic constant = 0x41727101980
@@ -25,8 +26,8 @@ struct IPv4_AnnounceRequest {
   uint64_t connection_id;
   uint32_t action;
   uint32_t transaction_id;
-  unsigned char info_hash[INFOHASH_SIZE];
-  unsigned char peer_id[PEERID_SIZE];
+  const uint8_t *info_hash;
+  const uint8_t *peer_id;
   uint64_t downloaded;
   uint64_t left;
   uint64_t uploaded;
@@ -48,8 +49,16 @@ struct IPv4_AnnounceResponse {
   // both ip and port are in network endian order
 };
 
-struct AnnounceInformation {
-
+struct TrackerParams {
+  const std::string url;
+  const uint8_t info_hash[INFOHASH_SIZE];
+  const uint8_t peer_id[PEERID_SIZE];
+  uint64_t size;
+  std::mutex & ps_mut;
+  std::mutex & d_mut;
+  uint64_t & downloaded;
+  std::set<Peer> & peer_set;
+  
 };
 
 inline uint64_t htonll(uint64_t x) { 

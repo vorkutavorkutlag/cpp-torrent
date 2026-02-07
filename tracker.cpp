@@ -3,18 +3,21 @@
 // #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #include <cstring>
 #include <ctime>
 #include <iostream>
 #include <map>
+#include <memory>
+#include <mutex>
 #include <set>
+#include <thread>
 #include <variant>
 
 #include "bencode.h"
 #include "constants.h"
-#include "sys/socket.h"
 
 struct HostPortPair {
   const std::string host;
@@ -25,26 +28,37 @@ struct SocketConnectionUDP {
   uint64_t connection_id;
   const int sockfd;
   sockaddr_in servaddr;
+  uint16_t port;
 };
 
-size_t write_u16(uint8_t * buffer, size_t offset, uint16_t & v) {
+size_t write_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
   memcpy(buffer + offset, &v, 2);
   return offset + 2;
 }
 
-size_t write_u32(uint8_t * buffer, size_t offset, uint32_t & v) {
+size_t write_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
   memcpy(buffer + offset, &v, 4);
   return offset + 4;
 }
 
-size_t write_u64(uint8_t * buffer, size_t offset, uint64_t & v) {
+size_t write_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
   memcpy(buffer + offset, &v, 8);
   return offset + 8;
 }
 
-size_t write_20B(uint8_t * buffer, size_t offset, const uint8_t v[]) {
+size_t write_20B(uint8_t* buffer, const size_t offset, const uint8_t v[]) {
   memcpy(buffer + offset, v, 20);
   return offset + 20;
+}
+
+size_t read_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
+  memcpy(&v, buffer + offset, 2);
+  return offset + 2;
+}
+
+size_t read_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
+  memcpy(&v, buffer + offset, 4);
+  return offset + 4;
 }
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
@@ -62,7 +76,7 @@ std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
   return trackers;
 }
 
-int determine_tracker_type(std::string url) {
+int determine_tracker_type(const std::string url) {
   if (url.rfind("udp", 0) == 0) return 1;
   if (url.rfind("http", 0) == 0 || url.rfind("https", 0)) return 2;
   return -1;
@@ -91,7 +105,7 @@ int _send_announce_udp(SocketConnectionUDP& conn,
   uint32_t num_want = htonl(annreq.num_want);
 
   uint16_t port = htons(annreq.port);
-  
+
   size_t offset = 0;
   offset = write_u64(buffer, offset, connection_id);
   offset = write_u32(buffer, offset, action);
@@ -103,30 +117,12 @@ int _send_announce_udp(SocketConnectionUDP& conn,
   offset = write_u64(buffer, offset, downloaded);
   offset = write_u64(buffer, offset, left);
   offset = write_u64(buffer, offset, uploaded);
-  
+
   offset = write_u32(buffer, offset, event);
   offset = write_u32(buffer, offset, ip_address);
   offset = write_u32(buffer, offset, key);
   offset = write_u32(buffer, offset, num_want);
   offset = write_u16(buffer, offset, port);
-
-
-  // memcpy(buffer + 0, &connection_id, 8);
-  // memcpy(buffer + 8, &action, 4);
-  // memcpy(buffer + 12, &transaction_id, 4);
-
-  // memcpy(buffer + 16, annreq.info_hash, 20);
-  // memcpy(buffer + 36, annreq.peer_id, 20);
-
-  // memcpy(buffer + 56, &downloaded, 8);
-  // memcpy(buffer + 64, &left, 8);
-  // memcpy(buffer + 72, &uploaded, 8);
-
-  // memcpy(buffer + 80, &event, 4);
-  // memcpy(buffer + 84, &ip_address, 4);
-  // memcpy(buffer + 88, &key, 4);
-  // memcpy(buffer + 92, &num_want, 4);
-  // memcpy(buffer + 96, &port, 2);
 
   socklen_t len = sizeof(&conn.servaddr);
   return sendto(conn.sockfd, buffer, sizeof(buffer), 0,
@@ -167,6 +163,13 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
   if (head_recv_len < (size_t)(UDP_BUFFER::ANNOUNCE_RESPONSE_HEAD))
     return (IPv4_AnnounceResponse){};
 
+  size_t h_offset = 0;
+  h_offset = read_u32(head_buffer, h_offset, action);
+  h_offset = read_u32(head_buffer, h_offset, transaction_id);
+  h_offset = read_u32(head_buffer, h_offset, interval);
+  h_offset = read_u32(head_buffer, h_offset, leechers);
+  h_offset = read_u32(head_buffer, h_offset, seeders);
+
   action = ntohl(action);
   transaction_id = ntohl(transaction_id);
   interval = ntohl(interval);
@@ -190,21 +193,22 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
       recvfrom(conn.sockfd, tail_buffer, remaining_size, MSG_WAITALL,
                reinterpret_cast<sockaddr*>(&conn.servaddr), &socklen);
 
-  for (size_t i = 0; i < seeders; i++) {
+  size_t t_offset = 0;
+
+  for (size_t i = 0; i < seeders; ++i) {
     uint32_t ip;
     uint16_t port;
 
-    std::memcpy(&ip, tail_buffer + i * pair_len, ip_len);
-    std::memcpy(&port, tail_buffer + i * pair_len, port_len);
-
     // will only use as big endian - no conversion needed.
+    t_offset = read_u32(tail_buffer, t_offset, ip);
+    t_offset = read_u16(tail_buffer, t_offset, port);
 
     ip_addresses.push_back(ip);
     ports.push_back(port);
   }
 
-  return (IPv4_AnnounceResponse){
-      action, transaction_id, interval, leechers, seeders, ip_addresses, ports};
+  return (IPv4_AnnounceResponse){action,  transaction_id, interval, leechers,
+                                 seeders, ip_addresses,   ports};
 }
 
 UDP_ConnectResponse _recv_conresp_udp(SocketConnectionUDP& conn) {
@@ -259,7 +263,7 @@ SocketConnectionUDP connect_udp(std::string url) {
   int addr_err = getaddrinfo(hp.host.c_str(), hp.port.c_str(), &hints, &res);
   if (addr_err != 0) {
     close(sockfd);
-    return (SocketConnectionUDP){0, -1, servaddr};
+    return (SocketConnectionUDP){0, -1, servaddr, 0};
   }
 
   servaddr = *reinterpret_cast<sockaddr_in*>(res->ai_addr);
@@ -275,7 +279,7 @@ SocketConnectionUDP connect_udp(std::string url) {
 
   if (send_err == -1) {
     close(sockfd);
-    return (SocketConnectionUDP){0, -1, servaddr};
+    return (SocketConnectionUDP){0, -1, servaddr, 0};
   }
   // std::cout << "Sent:\n"
   //           << PROTOCOL_ID << "\n"
@@ -288,7 +292,7 @@ SocketConnectionUDP connect_udp(std::string url) {
   if (transaction_id != conresp.transaction_id ||
       (!conresp.action && !conresp.connection_id && !conresp.transaction_id)) {
     close(sockfd);
-    return (SocketConnectionUDP){0, -1, servaddr};
+    return (SocketConnectionUDP){0, -1, servaddr, 0};
   }
 
   // std::cout << "Received:\n"
@@ -296,16 +300,72 @@ SocketConnectionUDP connect_udp(std::string url) {
   //           << conresp.transaction_id << "\n"
   //           << conresp.connection_id << std::endl;
   conn.connection_id = conresp.connection_id;
-  return (SocketConnectionUDP){conresp.connection_id, sockfd, servaddr};
+  return (SocketConnectionUDP){conresp.connection_id, sockfd, servaddr,
+                               (uint16_t)atoi(hp.port.c_str())};
 }
 
-IPv4_AnnounceResponse announce_udp(SocketConnectionUDP conn,
-                                       IPv4_AnnounceRequest& annreq) {
-  annreq.transaction_id = generate_rand_transaction_id();
-  return IPv4_AnnounceResponse{};
+IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
+                                   SocketConnectionUDP conn, uint32_t event,
+                                   uint32_t port) {
+  uint32_t real_downloaded;
+  {
+    const std::lock_guard<std::mutex> lock(params.get()->d_mut);
+    real_downloaded = params.get()->downloaded;
+  }
+
+  IPv4_AnnounceRequest annreq = {
+      conn.connection_id,
+      static_cast<uint32_t>(UDP_ACTION::ANNOUNCE),
+      generate_rand_transaction_id(),
+      params.get()->info_hash,
+      params.get()->peer_id,
+      real_downloaded,
+      params.get()->size - real_downloaded,
+      (uint32_t)0,  // uploaded...? I'M A LEECH!
+      event,
+      static_cast<uint32_t>(ANNOUNCE_DEFAULTS::IP_ADDRESS),
+      (uint32_t)0,  // no idea what a key does.
+      static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NUM_WANT),
+      port,
+  };
+
+  int err = _send_announce_udp(conn, annreq);
+  if (err == -1) return IPv4_AnnounceResponse{};
+
+  return _recv_annreq_udp(conn);
 }
 
-// int main(int argc, char* argv[]) {
-//   SocketConnectionUDP conn = connect_udp(argv[1]);
-//   return 0;
-// }
+void udp_life(std::shared_ptr<TrackerParams> params) {
+  // connect
+  SocketConnectionUDP conn = connect_udp(params.get()->url);
+
+  // indefinite announce loop
+  size_t iter = 0;
+  uint32_t interval = 0;
+  for (;; iter++) {
+    std::this_thread::sleep_for(std::chrono::seconds(interval));
+
+        uint32_t event =
+            iter == 0 ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
+                      : static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NONE);
+    IPv4_AnnounceResponse resp = announce_udp(params, conn, event, conn.port);
+
+    interval = resp.interval;
+    
+  }
+}
+
+void http_life(std::shared_ptr<TrackerParams> params) {}
+
+void tracker_life(std::shared_ptr<TrackerParams> params) {
+  switch (determine_tracker_type(params.get()->url)) {
+    case 1:
+      udp_life(params);
+      break;
+    case 2:
+      http_life(params);
+      break;
+    default:
+      return;
+  }
+}

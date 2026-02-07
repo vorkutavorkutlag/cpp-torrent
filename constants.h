@@ -49,4 +49,11 @@ enum class UDP_BUFFER : size_t {
   ANNOUNCE_RESPONSE_HEAD =  20,
 };
 
+enum class ANNOUNCE_DEFAULTS : size_t {
+  IP_ADDRESS =           0,
+  NUM_WANT   =  0xFFFFFFFF,   // == -1
+  STARTED    =           1,
+  NONE       =           0,
+};
+
 #endif

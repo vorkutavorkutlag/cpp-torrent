@@ -51,7 +51,7 @@ int main(int argc, char* argv[]) {
 
   BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
   std::vector<uint8_t> infohash = infohash_bytes(raw_info);
-  std::string hex_ih = infohash_hex(raw_info);
+  // std::string hex_ih = infohash_hex(raw_info);
 
   ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
 
@@ -63,7 +63,7 @@ int main(int argc, char* argv[]) {
   std::set<std::string> peers_set;
   std::vector<std::thread> threads;
 
-  std::cout << hex_ih << std::endl;
+  // std::cout << hex_ih << std::endl;
   for (const auto& i : trackers) {
     threads.emplace_back(thread_test, std::ref(peers_set_mutex),
                          std::ref(peers_set));

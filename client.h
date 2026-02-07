@@ -3,6 +3,8 @@
 
 #include <string>
 
+struct Peer;
+
 std::string generate_peerid();
 
 #endif
