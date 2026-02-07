@@ -23,6 +23,19 @@ namespace fs = std::filesystem;
     assert(condition && "Failed to properly read torrent file."); \
   } while (0)
 
+void thread_test(std::mutex& mut, std::set<std::string>& s) {
+  for (;;) {
+    {
+      std::this_thread::sleep_for(std::chrono::seconds(rand() % 10));
+      std::lock_guard<decltype(mut)> lock(mut);
+      s.insert("<<" +
+               std::to_string(
+                   std::hash<std::thread::id>{}(std::this_thread::get_id())) +
+               ">>");
+    }
+  }
+}
+
 int main(int argc, char* argv[]) {
   ASSERT_ia(argc == 3);
 
@@ -46,9 +59,24 @@ int main(int argc, char* argv[]) {
 
   std::set<std::string> trackers = extract_trackers(torrent_dict);
 
+  std::mutex peers_set_mutex;
+  std::set<std::string> peers_set;
+  std::vector<std::thread> threads;
+
   std::cout << hex_ih << std::endl;
   for (const auto& i : trackers) {
-    std::cout << i << std::endl;
+    threads.emplace_back(thread_test, std::ref(peers_set_mutex),
+                         std::ref(peers_set));
+  }
+
+  for (;;) {
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    std::cout << "\nLen: " << peers_set.size() << std::endl;
+    for (const auto& i : peers_set) std::cout << i << ' ';
+  }
+
+  for (std::thread& t : threads) {
+    t.join();
   }
 
   return 0;

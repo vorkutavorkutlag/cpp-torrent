@@ -1,6 +1,6 @@
 #include "tracker.h"
 
-#include <arpa/inet.h>
+// #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,6 +26,26 @@ struct SocketConnectionUDP {
   const int sockfd;
   sockaddr_in servaddr;
 };
+
+size_t write_u16(uint8_t * buffer, size_t offset, uint16_t & v) {
+  memcpy(buffer + offset, &v, 2);
+  return offset + 2;
+}
+
+size_t write_u32(uint8_t * buffer, size_t offset, uint32_t & v) {
+  memcpy(buffer + offset, &v, 4);
+  return offset + 4;
+}
+
+size_t write_u64(uint8_t * buffer, size_t offset, uint64_t & v) {
+  memcpy(buffer + offset, &v, 8);
+  return offset + 8;
+}
+
+size_t write_20B(uint8_t * buffer, size_t offset, const uint8_t v[]) {
+  memcpy(buffer + offset, v, 20);
+  return offset + 20;
+}
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
   std::set<std::string> trackers;
@@ -54,40 +74,59 @@ uint32_t generate_rand_transaction_id() {
 }
 
 int _send_announce_udp(SocketConnectionUDP& conn,
-                       const UDP_IPv4_AnnounceRequest& req) {
+                       const IPv4_AnnounceRequest& annreq) {
   uint8_t buffer[(size_t)(UDP_BUFFER::ANNOUNCE_REQUEST)];
 
-  uint64_t connection_id = htonll(req.connection_id);
-  uint32_t action = htonl(req.action);
-  uint32_t transaction_id = htonl(req.transaction_id);
+  uint64_t connection_id = htonll(annreq.connection_id);
+  uint32_t action = htonl(annreq.action);
+  uint32_t transaction_id = htonl(annreq.transaction_id);
 
-  uint64_t downloaded = htonll(req.downloaded);
-  uint64_t left = htonll(req.left);
-  uint64_t uploaded = htonll(req.uploaded);
+  uint64_t downloaded = htonll(annreq.downloaded);
+  uint64_t left = htonll(annreq.left);
+  uint64_t uploaded = htonll(annreq.uploaded);
 
-  uint32_t event = htonl(req.event);
-  uint32_t ip_address = htonl(req.ip_address);
-  uint32_t key = htonl(req.key);
-  uint32_t num_want = htonl(req.num_want);
+  uint32_t event = htonl(annreq.event);
+  uint32_t ip_address = htonl(annreq.ip_address);
+  uint32_t key = htonl(annreq.key);
+  uint32_t num_want = htonl(annreq.num_want);
 
-  uint16_t port = htons(req.port);
+  uint16_t port = htons(annreq.port);
+  
+  size_t offset = 0;
+  offset = write_u64(buffer, offset, connection_id);
+  offset = write_u32(buffer, offset, action);
+  offset = write_u32(buffer, offset, transaction_id);
 
-  memcpy(buffer + 0, &connection_id, 8);
-  memcpy(buffer + 8, &action, 4);
-  memcpy(buffer + 12, &transaction_id, 4);
+  offset = write_20B(buffer, offset, annreq.info_hash);
+  offset = write_20B(buffer, offset, annreq.peer_id);
 
-  memcpy(buffer + 16, req.info_hash, 20);
-  memcpy(buffer + 36, req.peer_id, 20);
+  offset = write_u64(buffer, offset, downloaded);
+  offset = write_u64(buffer, offset, left);
+  offset = write_u64(buffer, offset, uploaded);
+  
+  offset = write_u32(buffer, offset, event);
+  offset = write_u32(buffer, offset, ip_address);
+  offset = write_u32(buffer, offset, key);
+  offset = write_u32(buffer, offset, num_want);
+  offset = write_u16(buffer, offset, port);
 
-  memcpy(buffer + 56, &downloaded, 8);
-  memcpy(buffer + 64, &left, 8);
-  memcpy(buffer + 72, &uploaded, 8);
 
-  memcpy(buffer + 80, &event, 4);
-  memcpy(buffer + 84, &ip_address, 4);
-  memcpy(buffer + 88, &key, 4);
-  memcpy(buffer + 92, &num_want, 4);
-  memcpy(buffer + 96, &port, 2);
+  // memcpy(buffer + 0, &connection_id, 8);
+  // memcpy(buffer + 8, &action, 4);
+  // memcpy(buffer + 12, &transaction_id, 4);
+
+  // memcpy(buffer + 16, annreq.info_hash, 20);
+  // memcpy(buffer + 36, annreq.peer_id, 20);
+
+  // memcpy(buffer + 56, &downloaded, 8);
+  // memcpy(buffer + 64, &left, 8);
+  // memcpy(buffer + 72, &uploaded, 8);
+
+  // memcpy(buffer + 80, &event, 4);
+  // memcpy(buffer + 84, &ip_address, 4);
+  // memcpy(buffer + 88, &key, 4);
+  // memcpy(buffer + 92, &num_want, 4);
+  // memcpy(buffer + 96, &port, 2);
 
   socklen_t len = sizeof(&conn.servaddr);
   return sendto(conn.sockfd, buffer, sizeof(buffer), 0,
@@ -111,7 +150,7 @@ int _send_conreq_udp(SocketConnectionUDP& conn,
                 reinterpret_cast<sockaddr*>(&conn.servaddr), len);
 }
 
-UDP_IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
+IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
   uint8_t head_buffer[(size_t)UDP_BUFFER::ANNOUNCE_RESPONSE_HEAD];
 
   uint32_t action;
@@ -126,7 +165,7 @@ UDP_IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
       MSG_WAITALL, reinterpret_cast<sockaddr*>(&conn.servaddr), &socklen);
 
   if (head_recv_len < (size_t)(UDP_BUFFER::ANNOUNCE_RESPONSE_HEAD))
-    return (UDP_IPv4_AnnounceResponse){};
+    return (IPv4_AnnounceResponse){};
 
   action = ntohl(action);
   transaction_id = ntohl(transaction_id);
@@ -158,14 +197,13 @@ UDP_IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
     std::memcpy(&ip, tail_buffer + i * pair_len, ip_len);
     std::memcpy(&port, tail_buffer + i * pair_len, port_len);
 
-    ip = htonl(ip);
-    port = htons(port);
+    // will only use as big endian - no conversion needed.
 
     ip_addresses.push_back(ip);
     ports.push_back(port);
   }
 
-  return (UDP_IPv4_AnnounceResponse){
+  return (IPv4_AnnounceResponse){
       action, transaction_id, interval, leechers, seeders, ip_addresses, ports};
 }
 
@@ -261,12 +299,13 @@ SocketConnectionUDP connect_udp(std::string url) {
   return (SocketConnectionUDP){conresp.connection_id, sockfd, servaddr};
 }
 
-UDP_IPv4_AnnounceResponse udp_announce(SocketConnectionUDP conn,
-                                       UDP_IPv4_AnnounceRequest& annreq) {
+IPv4_AnnounceResponse announce_udp(SocketConnectionUDP conn,
+                                       IPv4_AnnounceRequest& annreq) {
   annreq.transaction_id = generate_rand_transaction_id();
+  return IPv4_AnnounceResponse{};
 }
 
-int main(int argc, char* argv[]) {
-  connect_udp(argv[1]);
-  return 0;
-}
+// int main(int argc, char* argv[]) {
+//   SocketConnectionUDP conn = connect_udp(argv[1]);
+//   return 0;
+// }
