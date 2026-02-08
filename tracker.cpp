@@ -195,7 +195,8 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
 
   size_t t_offset = 0;
 
-  for (size_t i = 0; i < seeders; ++i) {
+  for (size_t i = 0; i < seeders; ++i) {  // wrong! number of ip-ports isn't
+                                          // guaranteed to be same as seeders
     uint32_t ip;
     uint16_t port;
 
@@ -343,18 +344,25 @@ void udp_life(std::shared_ptr<TrackerParams> params) {
   size_t iter = 0;
   uint32_t interval = 0;
   for (;; iter++) {
+    
     std::this_thread::sleep_for(std::chrono::seconds(interval));
 
-        uint32_t event =
-            iter == 0 ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
-                      : static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NONE);
-    IPv4_AnnounceResponse resp = announce_udp(params, conn, event, conn.port);
+    uint32_t event = iter == 0
+                         ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
+                         : static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NONE);
 
+
+    IPv4_AnnounceResponse resp = announce_udp(params, conn, event, conn.port);
     interval = resp.interval;
-    
+
+    const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
+    for (size_t i = 0; i < resp.ip_addresses.size(); i++) {
+      params.get()->peer_set.emplace(resp.ip_addresses[i], resp.ports[i]);
+    }
   }
 }
 
+// not implemented
 void http_life(std::shared_ptr<TrackerParams> params) {}
 
 void tracker_life(std::shared_ptr<TrackerParams> params) {

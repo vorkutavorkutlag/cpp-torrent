@@ -8,6 +8,10 @@
 #include <variant>
 #include <vector>
 
+#include <openssl/sha.h>
+
+#include "constants.h"
+
 struct BencodeValue;
 
 using BencodeList = std::vector<BencodeValue>;
@@ -28,7 +32,8 @@ enum class BencodeChar : char {
 
 void bencode_dump(BencodeValue val);
 // std::string trim_raw_info(std::string & raw_infohash);
-std::vector<unsigned char> infohash_bytes(const std::string& raw_infohash);
+std::array<uint8_t, SHA_DIGEST_LENGTH> infohash_bytes(const std::string& raw_infohash);
+uint64_t get_torrent_size(const BencodeDict & dict);
 std::string infohash_hex(const std::string& raw_infohash);
 
 BencodeValue decode(std::ifstream& file, std::string& raw_infohash,

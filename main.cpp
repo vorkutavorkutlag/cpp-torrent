@@ -1,3 +1,4 @@
+#include <array>
 #include <cassert>
 #include <filesystem>
 #include <fstream>
@@ -50,34 +51,47 @@ int main(int argc, char* argv[]) {
   bool _IH_parse_condition = false;
 
   BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
-  std::vector<uint8_t> infohash = infohash_bytes(raw_info);
+  std::array<uint8_t, INFOHASH_SIZE> infohash = infohash_bytes(raw_info);
   // std::string hex_ih = infohash_hex(raw_info);
 
   ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
-
   BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
 
-  std::set<std::string> trackers = extract_trackers(torrent_dict);
+  // std::set<std::string> trackers = extract_trackers(torrent_dict);
 
-  std::mutex peers_set_mutex;
-  std::set<std::string> peers_set;
-  std::vector<std::thread> threads;
+  std::array<uint8_t, PEERID_SIZE> peer_id = generate_peerid();
 
-  // std::cout << hex_ih << std::endl;
-  for (const auto& i : trackers) {
-    threads.emplace_back(thread_test, std::ref(peers_set_mutex),
-                         std::ref(peers_set));
-  }
+  uint64_t torrent_size = get_torrent_size(torrent_dict);
+  std::cout << torrent_size << std::endl;
 
-  for (;;) {
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    std::cout << "\nLen: " << peers_set.size() << std::endl;
-    for (const auto& i : peers_set) std::cout << i << ' ';
-  }
+  // std::mutex peers_set_mutex;
+  // std::mutex download_mutex;
+  // std::set<Peer> peers_set;
+  // std::vector<std::thread> threads;
 
-  for (std::thread& t : threads) {
-    t.join();
-  }
+  // // std::cout << hex_ih << std::endl;
+  // for (const auto& tracker : trackers) {
+  //   TrackerParams params = {
+  //     tracker,
+  //     infohash,
+  //     peer_id,
+  //     0, // size temp
+  //     peers_set_mutex,
+  //     download_mutex,
+  //     0, // downloaded temp
+  //     peers_set
+  //   };
+  // }
+
+  // for (;;) {
+  //   std::this_thread::sleep_for(std::chrono::seconds(2));
+  //   std::cout << "\nLen: " << peers_set.size() << std::endl;
+  //   for (const auto& i : peers_set) std::cout << i << ' ';
+  // }
+
+  // for (std::thread& t : threads) {
+  //   t.join();
+  // }
 
   return 0;
 }

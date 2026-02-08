@@ -51,8 +51,8 @@ struct IPv4_AnnounceResponse {
 
 struct TrackerParams {
   const std::string url;
-  const uint8_t info_hash[INFOHASH_SIZE];
-  const uint8_t peer_id[PEERID_SIZE];
+  std::array<uint8_t, INFOHASH_SIZE> info_hash;
+  std::array<uint8_t, PEERID_SIZE> peer_id;
   uint64_t size;
   std::mutex & ps_mut;
   std::mutex & d_mut;
@@ -78,6 +78,7 @@ inline std::uint64_t ntohll(std::uint64_t value) {
 }
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict);
+void tracker_life(std::shared_ptr<TrackerParams>);
 
 /*1 == UDP
   2 == HTTP/HTTPS

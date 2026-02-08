@@ -14,20 +14,15 @@ struct Peer {
 /* Sets new seed for random and
   randomly generates PEERID_SIZE length string
   of alphanumeric characters.*/
-std::string generate_peerid() {
-  static const char alnum[] =
-      "0123456789"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "abcdefghijklmnopqrstuvwxyz";
-
-  std::string tmp_s;
-  tmp_s.reserve(PEERID_SIZE);
+std::array<uint8_t, PEERID_SIZE> generate_peerid() {
+  std::array<uint8_t, PEERID_SIZE> pid;
+  constexpr size_t uint8_ran = 256;
 
   srand(time(NULL) * getpid());
 
   for (int i = 0; i < PEERID_SIZE; ++i) {
-    tmp_s += alnum[rand() % (sizeof(alnum) - 1)];
+    pid[i] = rand() % uint8_ran; 
   }
 
-  return tmp_s;
+  return pid;
 }

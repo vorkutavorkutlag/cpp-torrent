@@ -1,10 +1,12 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <string>
+#include <array>
+
+#include "constants.h"
 
 struct Peer;
 
-std::string generate_peerid();
+std::array<uint8_t, PEERID_SIZE> generate_peerid();
 
 #endif

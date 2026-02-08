@@ -1,7 +1,6 @@
 #include "bencode.h"
 
-#include <openssl/sha.h>
-
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <fstream>
@@ -143,14 +142,39 @@ std::string trim_raw_info(const std::string& raw_info) {
   return raw_info.substr(0, raw_info.size() - 1);
 }
 
-std::vector<unsigned char> infohash_bytes(const std::string& raw_info) {
+std::array<uint8_t, SHA_DIGEST_LENGTH> infohash_bytes(
+    const std::string& raw_info) {
   std::string trimmed_info = trim_raw_info(raw_info);
-  std::vector<unsigned char> hash(SHA_DIGEST_LENGTH);
+  std::array<uint8_t, SHA_DIGEST_LENGTH> hash;
 
   SHA1(reinterpret_cast<const unsigned char*>(trimmed_info.data()),
        trimmed_info.size(), hash.data());
 
   return hash;
+}
+
+uint64_t get_torrent_size(const BencodeDict& dict) {
+  const BencodeDict info = std::get<BencodeDict>(dict.find(TF_String[INFO])->second);
+
+  if (info.count(TF_String[FLENGTH])) {  // flength exists <=> single file torrent
+    const int64_t size_int = std::get<int64_t>(dict.find(TF_String[FLENGTH])->second);
+    return static_cast<uint64_t>(size_int);
+  }
+
+  // handle multi-file torrent in <files>
+  uint64_t sum_size = 0;
+  const BencodeList files = std::get<BencodeList>(info.find(TF_String[FILES])->second);
+  for (const auto & pair : files) {
+    const BencodeDict file = std::get<BencodeDict>(pair);
+    const int64_t size_int = std::get<int64_t>(file.find(TF_String[LENGTH])->second);
+    // const BencodeList pathl = std::get<BencodeList>(file.find(TF_String[PATH])->second);
+    // const std::string path = std::get<std::string>(pathl[0]);
+    // std::cout << path << std::endl;
+    sum_size += static_cast<uint64_t>(size_int);
+  }
+
+  return sum_size;
+  
 }
 
 std::string infohash_hex(const std::string& raw_info) {
