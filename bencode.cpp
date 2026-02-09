@@ -156,8 +156,9 @@ std::array<uint8_t, SHA_DIGEST_LENGTH> infohash_bytes(
 uint64_t get_torrent_size(const BencodeDict& dict) {
   const BencodeDict info = std::get<BencodeDict>(dict.find(TF_String[INFO])->second);
 
-  if (info.count(TF_String[FLENGTH])) {  // flength exists <=> single file torrent
-    const int64_t size_int = std::get<int64_t>(dict.find(TF_String[FLENGTH])->second);
+  // flength exists <=> single file torrent
+  if (info.count(TF_String[FLENGTH])) {
+    const int64_t size_int = std::get<int64_t>(info.find(TF_String[FLENGTH])->second);
     return static_cast<uint64_t>(size_int);
   }
 
@@ -174,7 +175,6 @@ uint64_t get_torrent_size(const BencodeDict& dict) {
   }
 
   return sum_size;
-  
 }
 
 std::string infohash_hex(const std::string& raw_info) {

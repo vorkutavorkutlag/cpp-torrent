@@ -307,7 +307,7 @@ SocketConnectionUDP connect_udp(std::string url) {
 
 IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
                                    SocketConnectionUDP conn, uint32_t event,
-                                   uint32_t port) {
+                                   uint16_t port) {
   uint32_t real_downloaded;
   {
     const std::lock_guard<std::mutex> lock(params.get()->d_mut);
@@ -318,8 +318,8 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
       conn.connection_id,
       static_cast<uint32_t>(UDP_ACTION::ANNOUNCE),
       generate_rand_transaction_id(),
-      params.get()->info_hash,
-      params.get()->peer_id,
+      params.get()->info_hash.data(),
+      params.get()->peer_id.data(),
       real_downloaded,
       params.get()->size - real_downloaded,
       (uint32_t)0,  // uploaded...? I'M A LEECH!
@@ -340,17 +340,17 @@ void udp_life(std::shared_ptr<TrackerParams> params) {
   // connect
   SocketConnectionUDP conn = connect_udp(params.get()->url);
 
+  std::cout << "Connected to " << params.get()->url << std::endl;
+
   // indefinite announce loop
   size_t iter = 0;
   uint32_t interval = 0;
   for (;; iter++) {
-    
     std::this_thread::sleep_for(std::chrono::seconds(interval));
 
     uint32_t event = iter == 0
                          ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
                          : static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NONE);
-
 
     IPv4_AnnounceResponse resp = announce_udp(params, conn, event, conn.port);
     interval = resp.interval;
