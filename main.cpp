@@ -3,15 +3,15 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <mutex>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <thread>
 
 #include "bencode.h"
+#include "client.h"
 #include "constants.h"
 #include "tracker.h"
-#include "client.h"
 
 namespace fs = std::filesystem;
 
@@ -59,31 +59,25 @@ int main(int argc, char* argv[]) {
   std::vector<std::thread> tracker_threads;
 
   // std::cout << hex_ih << std::endl;
-  for (const auto& tracker : trackers) {
-    std::cout << "Creating thread..." << std::endl;
-    auto params = std::make_shared<TrackerParams>(TrackerParams{
-      tracker,
-      infohash,
-      peer_id,
-      torrent_size,
-      peers_set_mutex,
-      download_mutex,
-      total_downloaded,
-      peers_set
-    });
-  
-    tracker_threads.emplace_back(tracker_life, params);
-  }
+  // for (const auto& tracker : trackers) {
+  const auto& tracker = *(std::next(trackers.begin(), 1));
+  std::cout << "We got " << tracker << std::endl;
+  auto params = std::make_shared<TrackerParams>(
+      TrackerParams{tracker, infohash, peer_id, torrent_size, peers_set_mutex,
+                    download_mutex, total_downloaded, peers_set});
+
+  tracker_threads.emplace_back(tracker_life, params);
+  // }
 
   for (;;) {
-    std::set<Peer> copy; 
-    
+    std::set<Peer> copy;
+
     {
       const std::lock_guard<std::mutex> lock(peers_set_mutex);
       copy = peers_set;
     }
-    
-    for (auto & peer : copy) {
+
+    for (auto& peer : copy) {
       std::cout << peer.ip << std::endl;
     }
 

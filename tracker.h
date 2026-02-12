@@ -54,8 +54,8 @@ struct IPv4_AnnounceResponse {
 
 struct TrackerParams {
   const std::string url;
-  std::array<uint8_t, INFOHASH_SIZE> info_hash;
-  std::array<uint8_t, PEERID_SIZE> peer_id;
+  const std::array<uint8_t, INFOHASH_SIZE> info_hash; // const could be type-problematic..
+  const std::array<uint8_t, PEERID_SIZE> peer_id;     
   const uint64_t& size;
   std::mutex& ps_mut;
   std::mutex& d_mut;
@@ -78,8 +78,29 @@ inline std::uint64_t ntohll(std::uint64_t value) {
          ((value & 0xFF00000000000000ULL) >> 56);
 }
 
+inline int determine_tracker_type(const std::string url) {
+  if (url.rfind("udp", 0) == 0) return 1;
+  if (url.rfind("http", 0) == 0 || url.rfind("https", 0)) return 2;
+  return -1;
+}
+
 std::set<std::string> extract_trackers(BencodeDict torrent_dict);
-void tracker_life(std::shared_ptr<TrackerParams>);
+void tracker_life(const std::shared_ptr<TrackerParams> & params);
+void udp_life(const std::shared_ptr<TrackerParams> & params);
+void http_life(const std::shared_ptr<TrackerParams> & params);
+
+inline void tracker_life(const std::shared_ptr<TrackerParams> & params) {
+  switch (determine_tracker_type(params.get()->url)) {
+    case 1:
+      udp_life(params);
+      break;
+    case 2:
+      http_life(params);
+      break;
+    default:
+      return;
+  }
+}
 
 /*1 == UDP
   2 == HTTP/HTTPS

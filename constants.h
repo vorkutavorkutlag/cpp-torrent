@@ -5,21 +5,22 @@
 #include <string>
 #include <cstdint>
 
-#define INFOHASH_SIZE 20
-#define PEERID_SIZE 20
-#define PROTOCOL_ID 0x41727101980ULL
+constexpr size_t INFOHASH_SIZE = 20;
+constexpr size_t PEERID_SIZE = 20;
+constexpr uint64_t PROTOCOL_ID = 0x41727101980ULL;
+constexpr size_t MAX_ANNOUNCE_PEERS = 250; // safe upper bound
 
 // per bytes
 #define UDP_CONREQ_LEN 16
 
 enum TF_Key {
   ANNOUNCE,
-  ANNOUNCE_LIST,  // Common, but not guaranteed
+  ANNOUNCE_LIST,  // common, but not guaranteed
   INFO,
   FILES,
   LENGTH,
   PATH,
-  FLENGTH,  // Exists only for single-file torrents
+  FLENGTH,  // exists only for single-file torrents
   FNAME,    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   PIECE_LENGTH,
   PIECES,  // SHA-1 Hash List.
@@ -46,7 +47,8 @@ enum class UDP_BUFFER : size_t {
   CONNECT_REQUEST        =  16,
   CONNECT_RESPONSE       =  16,
   ANNOUNCE_REQUEST       =  98,
-  ANNOUNCE_RESPONSE_HEAD =  20,
+  ANNOUNCE_HEAD          =  20,
+  ANNOUNCE_RESPONSE      = 20+MAX_ANNOUNCE_PEERS*6,
 };
 
 enum class ANNOUNCE_DEFAULTS : size_t {
