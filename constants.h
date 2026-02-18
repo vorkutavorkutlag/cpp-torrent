@@ -1,29 +1,29 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <cstdint>
 #include <map>
 #include <string>
-#include <cstdint>
 
 constexpr size_t INFOHASH_SIZE = 20;
 constexpr size_t PEERID_SIZE = 20;
 constexpr uint64_t PROTOCOL_ID = 0x41727101980ULL;
-constexpr size_t MAX_ANNOUNCE_PEERS = 250; // safe upper bound
+constexpr size_t MAX_ANNOUNCE_PEERS = 250;  // safe upper bound
 
 // per bytes
 #define UDP_CONREQ_LEN 16
 
 enum TF_Key {
-  ANNOUNCE,
-  ANNOUNCE_LIST,  // common, but not guaranteed
-  INFO,
-  FILES,
-  LENGTH,
-  PATH,
-  FLENGTH,  // exists only for single-file torrents
-  FNAME,    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  PIECE_LENGTH,
-  PIECES,  // SHA-1 Hash List.
+    ANNOUNCE,
+    ANNOUNCE_LIST,  // common, but not guaranteed
+    INFO,
+    FILES,
+    LENGTH,
+    PATH,
+    FLENGTH,  // exists only for single-file torrents
+    FNAME,    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    PIECE_LENGTH,
+    PIECES,  // SHA-1 Hash List.
 };
 
 inline std::map<TF_Key, std::string> TF_String = {
@@ -39,23 +39,23 @@ inline std::map<TF_Key, std::string> TF_String = {
     {PIECES, "pieces"}};
 
 enum class UDP_ACTION : uint16_t {
-  CONNECT  = 0,
-  ANNOUNCE = 1,
+    CONNECT = 0,
+    ANNOUNCE = 1,
 };
 
 enum class UDP_BUFFER : size_t {
-  CONNECT_REQUEST        =  16,
-  CONNECT_RESPONSE       =  16,
-  ANNOUNCE_REQUEST       =  98,
-  ANNOUNCE_HEAD          =  20,
-  ANNOUNCE_RESPONSE      = 20+MAX_ANNOUNCE_PEERS*6,
+    CONNECT_REQUEST = 16,
+    CONNECT_RESPONSE = 16,
+    ANNOUNCE_REQUEST = 98,
+    ANNOUNCE_HEAD = 20,
+    ANNOUNCE_RESPONSE = 20 + MAX_ANNOUNCE_PEERS * 6,
 };
 
 enum class ANNOUNCE_DEFAULTS : size_t {
-  IP_ADDRESS =           0,
-  NUM_WANT   =  0xFFFFFFFF,   // == -1
-  STARTED    =           1,
-  NONE       =           0,
+    IP_ADDRESS = 0,
+    NUM_WANT = 0xFFFFFFFF,  // == -1
+    STARTED = 1,
+    NONE = 0,
 };
 
 #endif

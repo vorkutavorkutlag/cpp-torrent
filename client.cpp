@@ -10,14 +10,14 @@
   randomly generates PEERID_SIZE length string
   of alphanumeric characters.*/
 std::array<uint8_t, PEERID_SIZE> generate_peerid() {
-  std::array<uint8_t, PEERID_SIZE> pid;
-  constexpr size_t uint8_ran = 256;
+    std::array<uint8_t, PEERID_SIZE> pid;
+    constexpr size_t uint8_ran = 256;
 
-  srand(time(NULL) * getpid());
+    srand(time(NULL) * getpid());
 
-  for (int i = 0; i < PEERID_SIZE; ++i) {
-    pid[i] = rand() % uint8_ran; 
-  }
+    for (int i = 0; i < PEERID_SIZE; ++i) {
+        pid[i] = rand() % uint8_ran;
+    }
 
-  return pid;
+    return pid;
 }
