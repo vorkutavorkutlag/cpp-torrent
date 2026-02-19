@@ -14,7 +14,7 @@
 
 #include "constants.h"
 
-BencodeValue _decode_int(std::ifstream& file, std::string& raw_info,
+BencodeValue _decode_int(std::istream& file, std::string& raw_info,
                          bool& _IH_parse_condition) {
     std::int64_t int_val = 0;
     char c;
@@ -28,7 +28,21 @@ BencodeValue _decode_int(std::ifstream& file, std::string& raw_info,
     return BencodeValue{int_val};
 }
 
-BencodeValue _decode_bytestring(std::ifstream& file, std::string& raw_info,
+// BencodeValue _decode_int(const std::vector<char>& vec, size_t& index) {
+//     std::int64_t int_val = 0;
+
+//     while (index < vec.size()) {
+//         if (vec[index] == static_cast<char>(BencodeChar::END)) {
+//             ++index;
+//             break;
+//         }
+//         int_val *= 10;
+//         int_val += vec[index++] - '0';
+//     }
+//     return BencodeValue{int_val};
+// }
+
+BencodeValue _decode_bytestring(std::istream& file, std::string& raw_info,
                                 bool& _IH_parse_condition) {
     char c;
     file.unget();  // put digit back
@@ -57,8 +71,33 @@ BencodeValue _decode_bytestring(std::ifstream& file, std::string& raw_info,
     return BencodeValue{str};
 }
 
-BencodeValue decode(std::ifstream& file, std::string& raw_info,
-                    bool& _IH_parse_condition) {
+// BencodeValue _decode_bytestring(const std::vector<char>& vec, size_t& index)
+// {
+//     --index;  // put digit back
+
+//     size_t length = 0;
+//     std::string str;
+
+//     // read len
+//     while (index < vec.size()) {
+//         if (vec[index] == static_cast<char>(BencodeChar::DELIM)) {
+//             ++index;
+//             break;
+//         }
+//         length *= 10;
+//         length += vec[index++] - '0';
+//     }
+
+//     // read str
+//     while (str.size() != length && index < vec.size()) {
+//         str += vec[index++];
+//     }
+
+//     return BencodeValue{str};
+// }
+
+BencodeValue bdecode(std::istream& file, std::string& raw_info,
+                     bool& _IH_parse_condition) {
     char c;
     file.get(c);
 
@@ -80,7 +119,7 @@ BencodeValue decode(std::ifstream& file, std::string& raw_info,
             BencodeList list;
 
             for (;;) {
-                BencodeValue val = decode(file, raw_info, _IH_parse_condition);
+                BencodeValue val = bdecode(file, raw_info, _IH_parse_condition);
                 if (std::holds_alternative<std::monostate>(val)) break;
 
                 list.push_back(val);
@@ -94,7 +133,7 @@ BencodeValue decode(std::ifstream& file, std::string& raw_info,
             BencodeDict dict;
 
             for (;;) {
-                BencodeValue key = decode(file, raw_info, _IH_parse_condition);
+                BencodeValue key = bdecode(file, raw_info, _IH_parse_condition);
 
                 if (std::holds_alternative<std::monostate>(key)) break;
                 assert(std::holds_alternative<std::string>(key) &&
@@ -102,7 +141,7 @@ BencodeValue decode(std::ifstream& file, std::string& raw_info,
 
                 std::string str_key = std::get<std::string>(key);
 
-                BencodeValue val = decode(file, raw_info, _IH_parse_condition);
+                BencodeValue val = bdecode(file, raw_info, _IH_parse_condition);
 
                 dict[str_key] = val;
             }
@@ -116,6 +155,61 @@ BencodeValue decode(std::ifstream& file, std::string& raw_info,
         }
     }
 }
+
+// BencodeValue bdecode(const std::vector<char>& vec, size_t& index) {
+//     std::cout << "Read Char: " << vec[index] << '\n';
+//     switch (vec[index++]) {
+//         // e (for recursive purpose)
+//         case static_cast<char>(BencodeChar::END): {
+//             return BencodeValue{std::monostate{}};
+//         }
+
+//         // i<integer>e
+//         case static_cast<char>(BencodeChar::INTEGER): {
+//             return _decode_int(vec, index);
+//         }
+
+//         // l<items>e
+//         case static_cast<char>(BencodeChar::LIST): {
+//             BencodeList list;
+
+//             for (;;) {
+//                 BencodeValue val = bdecode(vec, index);
+//                 if (std::holds_alternative<std::monostate>(val)) break;
+
+//                 list.push_back(val);
+//             }
+
+//             return BencodeValue{list};
+//         }
+
+//         // d<pairs>e
+//         case static_cast<char>(BencodeChar::DICT): {
+//             BencodeDict dict;
+
+//             for (;;) {
+//                 BencodeValue key = bdecode(vec, index);
+
+//                 if (std::holds_alternative<std::monostate>(key)) break;
+//                 assert(std::holds_alternative<std::string>(key) &&
+//                        "Bencode dictionary key must be string!");
+
+//                 std::string str_key = std::get<std::string>(key);
+
+//                 BencodeValue val = bdecode(vec, index);
+
+//                 dict[str_key] = val;
+//             }
+
+//             return BencodeValue{dict};
+//         }
+
+//         // len:bytes
+//         default: {  // BYTE_STRING
+//             return _decode_bytestring(vec, index);
+//         }
+//     }
+// }
 
 void bencode_dump(BencodeValue val) {
     if (std::holds_alternative<int64_t>(val)) {

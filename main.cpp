@@ -40,9 +40,9 @@ int main(int argc, char* argv[]) {
     std::string raw_info;
     bool _IH_parse_condition = false;
 
-    BencodeValue decoded = decode(file, raw_info, _IH_parse_condition);
+    BencodeValue decoded = bdecode(file, raw_info, _IH_parse_condition);
     std::array<uint8_t, INFOHASH_SIZE> infohash = infohash_bytes(raw_info);
-    // std::string hex_ih = infohash_hex(raw_info);
+    std::string hex_ih = infohash_hex(raw_info);
 
     ASSERT_if(std::holds_alternative<BencodeDict>(decoded));
     BencodeDict torrent_dict = std::get<BencodeDict>(decoded);
@@ -59,13 +59,23 @@ int main(int argc, char* argv[]) {
     std::set<Peer> peers_set;
     std::vector<std::thread> tracker_threads;
 
+    std::cout << "Infohash: " << hex_ih << "\n";
+    // for (const auto& i : infohash) std::cout << i;
+    // std::cout << std::endl;
+
+    // for (const auto& tracker : trackers) {
+    //     std::cout << tracker << '\n';
+    // }
+
+    // return 0;
+
     // std::cout << hex_ih << std::endl;
     // for (const auto& tracker : trackers) {
-    const auto& tracker = *(std::next(trackers.begin(), 1));
+    const auto& tracker = *(std::next(trackers.begin(), 5));
     std::cout << "We got " << tracker << std::endl;
-    auto params = std::make_shared<TrackerParams>(
-        TrackerParams{tracker, infohash, peer_id, torrent_size, peers_set_mutex,
-                      download_mutex, total_downloaded, peers_set});
+    auto params = std::make_shared<TrackerParams>(TrackerParams{
+        tracker, infohash, hex_ih, peer_id, torrent_size, peers_set_mutex,
+        download_mutex, total_downloaded, peers_set});
 
     tracker_threads.emplace_back(tracker_life, params);
     // }

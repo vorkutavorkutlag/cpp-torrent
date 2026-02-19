@@ -56,6 +56,7 @@ struct TrackerParams {
     const std::string url;
     const std::array<uint8_t, INFOHASH_SIZE>
         info_hash;  // const could be type-problematic..
+    const std::string& hex_ih;
     const std::array<uint8_t, PEERID_SIZE> peer_id;
     const uint64_t& size;
     std::mutex& ps_mut;

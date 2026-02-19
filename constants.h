@@ -9,6 +9,7 @@ constexpr size_t INFOHASH_SIZE = 20;
 constexpr size_t PEERID_SIZE = 20;
 constexpr uint64_t PROTOCOL_ID = 0x41727101980ULL;
 constexpr size_t MAX_ANNOUNCE_PEERS = 250;  // safe upper bound
+constexpr const char* PEERS = "peers";
 
 // per bytes
 #define UDP_CONREQ_LEN 16
@@ -24,8 +25,10 @@ enum TF_Key {
     FNAME,    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     PIECE_LENGTH,
     PIECES,  // SHA-1 Hash List.
+    // PEERS,
 };
 
+/* Need to change this to constexpr */
 inline std::map<TF_Key, std::string> TF_String = {
     {ANNOUNCE, "announce"},
     {ANNOUNCE_LIST, "announce-list"},
@@ -36,7 +39,9 @@ inline std::map<TF_Key, std::string> TF_String = {
     {FLENGTH, "length"},
     {FNAME, "name"},
     {PIECE_LENGTH, "piece-length"},
-    {PIECES, "pieces"}};
+    {PIECES, "pieces"},
+    // {PEERS, "peers"}
+};
 
 enum class UDP_ACTION : uint16_t {
     CONNECT = 0,

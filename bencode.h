@@ -37,8 +37,10 @@ std::array<uint8_t, SHA_DIGEST_LENGTH> infohash_bytes(
 uint64_t get_torrent_size(const BencodeDict& dict);
 std::string infohash_hex(const std::string& raw_infohash);
 
-BencodeValue decode(std::ifstream& file, std::string& raw_infohash,
-                    bool& _IH_parse_condition);
+BencodeValue bdecode(std::istream& file, std::string& raw_infohash,
+                     bool& _IH_parse_condition);
+
+// BencodeValue bdecode(const std::vector<char>& vec, size_t& index);
 std::vector<unsigned char> infohash(std::ifstream& file);
 
 #endif
