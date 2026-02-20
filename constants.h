@@ -9,7 +9,8 @@ constexpr size_t INFOHASH_SIZE = 20;
 constexpr size_t PEERID_SIZE = 20;
 constexpr uint64_t PROTOCOL_ID = 0x41727101980ULL;
 constexpr size_t MAX_ANNOUNCE_PEERS = 250;  // safe upper bound
-constexpr const char* PEERS = "peers";
+constexpr const char* PEERS_STR = "peers";
+constexpr const char* INTERVAL_STR = "interval";
 
 // per bytes
 #define UDP_CONREQ_LEN 16

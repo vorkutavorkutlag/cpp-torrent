@@ -65,6 +65,20 @@ std::string build_http_announce_url(const TrackerParams& params, CURL* curl,
     return oss.str();
 }
 
+BencodeDict _decode_http_annresp(const std::vector<char>& resp) {
+    std::string data(resp.begin(), resp.end());
+    std::istringstream iss(data);
+    std::string __ri;
+    bool __ihc;
+    BencodeValue decoded = bdecode(iss, __ri, __ihc);
+
+    if (!std::holds_alternative<BencodeDict>(decoded)) {
+        return BencodeDict{};
+    }
+
+    return std::get<BencodeDict>(decoded);
+}
+
 std::vector<char> _http_announce(const std::shared_ptr<TrackerParams>& params,
                                  CURL* curl) {
     std::vector<char> response;
@@ -82,37 +96,9 @@ std::vector<char> _http_announce(const std::shared_ptr<TrackerParams>& params,
 
     CURLcode res = curl_easy_perform(curl);
     if (res != CURLE_OK) {
-        // handle error
+        response.clear();  // erasing error messages is bad but i don't care
+        return response;
     }
-
-    // std::cout << "Response size: " << response.size() << std::endl;
-    // std::cout.write(response.data(), response.size());
-    // d8:completei0e10:downloadedi0e10:incompletei1e8:intervali1819e12:min
-    // intervali909e5:peers6:Y#g9e
-
-    std::string data(response.begin(), response.end());
-    std::istringstream iss(data);
-    std::string __ri;
-    bool __ihc;
-    BencodeValue decoded = bdecode(iss, __ri, __ihc);
-
-    if (!std::holds_alternative<BencodeDict>(decoded)) {
-        // handle error
-    }
-
-    // bencode_dump(decoded);
-
-    BencodeDict decoded_dict = std::get<BencodeDict>(decoded);
-    const BencodeValue peers_be =
-        decoded_dict[PEERS];  // ugly.. should maybe change dict keys
-                              // to c_str
-    const std::string& peers = std::get<std::string>(peers_be);
-
-    std::cout << "Here it comes!" << std::endl;
-    for (const auto& i : peers) {
-        std::cout << +i << ' ';
-    }
-    std::cout << "Done!" << std::endl;
 
     return response;
 }
@@ -120,7 +106,35 @@ std::vector<char> _http_announce(const std::shared_ptr<TrackerParams>& params,
 void http_life(const std::shared_ptr<TrackerParams>& params) {
     // curl_global_init(0L);
     CURL* curl = curl_easy_init();
-    _http_announce(params, curl);
+
+    uint32_t interval = 180;  // reasonable default interval
+    for (;; std::this_thread::sleep_for(std::chrono::seconds(interval))) {
+        const std::vector<char> resp = _http_announce(params, curl);
+        if (resp.empty()) continue;
+
+        BencodeDict resp_dict = _decode_http_annresp(resp);
+        if (resp_dict.empty()) continue;
+
+        if (!std::holds_alternative<std::string>(resp_dict[PEERS_STR]))
+            continue;
+
+        if (std::holds_alternative<uint32_t>(resp_dict[INTERVAL_STR]))
+            interval = std::get<uint32_t>(resp_dict[INTERVAL_STR]);
+
+        const std::string& peers = std::get<std::string>(resp_dict[PEERS_STR]);
+
+        for (size_t i = 0; i + 6 <= peers.size(); i += 6) {
+            uint32_t ip;
+            uint16_t port;
+
+            memcpy(&ip, &peers[i], 4);
+            memcpy(&port, &peers[i + 4], 2);
+
+            const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
+            params.get()->peer_set.emplace(ip, port);
+        }
+    }
+
     curl_easy_cleanup(curl);
     // curl_global_cleanup();
 }

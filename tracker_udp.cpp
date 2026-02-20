@@ -6,14 +6,12 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-#include <cstring>
 #include <ctime>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <set>
-#include <thread>
 #include <variant>
 
 #include "bencode.h"
@@ -30,41 +28,6 @@ struct SocketConnectionUDP {
     sockaddr_in servaddr;
     uint16_t port;
 };
-
-size_t write_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
-    memcpy(buffer + offset, &v, sizeof(uint16_t));
-    return offset + sizeof(uint16_t);
-}
-
-size_t write_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
-    memcpy(buffer + offset, &v, sizeof(uint32_t));
-    return offset + sizeof(uint32_t);
-}
-
-size_t write_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
-    memcpy(buffer + offset, &v, sizeof(uint64_t));
-    return offset + sizeof(uint64_t);
-}
-
-size_t write_20B(uint8_t* buffer, const size_t offset, const uint8_t v[]) {
-    memcpy(buffer + offset, v, 20);
-    return offset + 20;
-}
-
-size_t read_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
-    memcpy(&v, buffer + offset, sizeof(uint16_t));
-    return offset + sizeof(uint16_t);
-}
-
-size_t read_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
-    memcpy(&v, buffer + offset, sizeof(uint32_t));
-    return offset + sizeof(uint32_t);
-}
-
-size_t read_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
-    memcpy(&v, buffer + offset, sizeof(uint64_t));
-    return offset + sizeof(uint64_t);
-}
 
 std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
     std::set<std::string> trackers;
@@ -106,22 +69,22 @@ int _send_announce_udp(SocketConnectionUDP& conn,
     uint16_t port = htons(annreq.port);
 
     size_t offset = 0;
-    offset = write_u64(buffer, offset, connection_id);
-    offset = write_u32(buffer, offset, action);
-    offset = write_u32(buffer, offset, transaction_id);
+    offset = _write_u64(buffer, offset, connection_id);
+    offset = _write_u32(buffer, offset, action);
+    offset = _write_u32(buffer, offset, transaction_id);
 
-    offset = write_20B(buffer, offset, annreq.info_hash);
-    offset = write_20B(buffer, offset, annreq.peer_id);
+    offset = _write_20B(buffer, offset, annreq.info_hash);
+    offset = _write_20B(buffer, offset, annreq.peer_id);
 
-    offset = write_u64(buffer, offset, downloaded);
-    offset = write_u64(buffer, offset, left);
-    offset = write_u64(buffer, offset, uploaded);
+    offset = _write_u64(buffer, offset, downloaded);
+    offset = _write_u64(buffer, offset, left);
+    offset = _write_u64(buffer, offset, uploaded);
 
-    offset = write_u32(buffer, offset, event);
-    offset = write_u32(buffer, offset, ip_address);
-    offset = write_u32(buffer, offset, key);
-    offset = write_u32(buffer, offset, num_want);
-    offset = write_u16(buffer, offset, port);
+    offset = _write_u32(buffer, offset, event);
+    offset = _write_u32(buffer, offset, ip_address);
+    offset = _write_u32(buffer, offset, key);
+    offset = _write_u32(buffer, offset, num_want);
+    offset = _write_u16(buffer, offset, port);
 
     socklen_t len = sizeof(conn.servaddr);
     return sendto(conn.sockfd, buffer, offset, 0,
@@ -137,9 +100,9 @@ int _send_conreq_udp(SocketConnectionUDP& conn,
     uint32_t transaction_id = htonl(conreq.transaction_id);
 
     size_t offset = 0;
-    offset = write_u64(buffer, offset, protocol_id);
-    offset = write_u32(buffer, offset, action);
-    offset = write_u32(buffer, offset, transaction_id);
+    offset = _write_u64(buffer, offset, protocol_id);
+    offset = _write_u32(buffer, offset, action);
+    offset = _write_u32(buffer, offset, transaction_id);
 
     socklen_t len = sizeof(conn.servaddr);
     return sendto(conn.sockfd, buffer, sizeof(buffer), 0,
@@ -164,11 +127,11 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
         return (IPv4_AnnounceResponse){};
 
     size_t offset = 0;
-    offset = read_u32(buffer, offset, action);
-    offset = read_u32(buffer, offset, transaction_id);
-    offset = read_u32(buffer, offset, interval);
-    offset = read_u32(buffer, offset, leechers);
-    offset = read_u32(buffer, offset, seeders);
+    offset = _read_u32(buffer, offset, action);
+    offset = _read_u32(buffer, offset, transaction_id);
+    offset = _read_u32(buffer, offset, interval);
+    offset = _read_u32(buffer, offset, leechers);
+    offset = _read_u32(buffer, offset, seeders);
 
     action = ntohl(action);
     transaction_id = ntohl(transaction_id);
@@ -196,8 +159,8 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
         uint32_t ip;
         uint16_t port;
 
-        offset = read_u32(buffer, offset, ip);
-        offset = read_u16(buffer, offset, port);
+        offset = _read_u32(buffer, offset, ip);
+        offset = _read_u16(buffer, offset, port);
 
         // no conversion, will be using big endian later anyway
         ip_addresses.push_back(ip);
@@ -224,9 +187,9 @@ UDP_ConnectResponse _recv_conresp_udp(SocketConnectionUDP& conn) {
         return (UDP_ConnectResponse){};
 
     size_t offset = 0;
-    offset = read_u32(buffer, offset, action);
-    offset = read_u32(buffer, offset, transaction_id);
-    offset = read_u64(buffer, offset, connection_id);
+    offset = _read_u32(buffer, offset, action);
+    offset = _read_u32(buffer, offset, transaction_id);
+    offset = _read_u64(buffer, offset, connection_id);
 
     action = ntohl(action);
     transaction_id = ntohl(transaction_id);
