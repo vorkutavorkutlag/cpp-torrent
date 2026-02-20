@@ -17,6 +17,28 @@ const std::string hexify_peer_id(
     return ss.str().substr(0, PEERID_SIZE);
 }
 
+uint16_t extract_port(const std::string& url) {
+    auto scheme_pos = url.find("://");
+    if (scheme_pos == std::string::npos) return 0;
+
+    size_t host_start = scheme_pos + 3;
+    size_t host_end = url.find('/', host_start);
+    if (host_end == std::string::npos) host_end = url.length();
+
+    std::string authority = url.substr(host_start, host_end - host_start);
+
+    auto colon_pos = authority.find(':');
+    if (colon_pos == std::string::npos) return 0;
+
+    try {
+        int port = std::stoi(authority.substr(colon_pos + 1));
+        if (port < 0 || port > 65535) return 0;
+        return static_cast<uint16_t>(port);
+    } catch (...) {
+        return 0;
+    }
+}
+
 size_t write_cb(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t total = size * nmemb;
     auto* buf = static_cast<std::vector<char>*>(userp);
@@ -79,44 +101,69 @@ BencodeDict _decode_http_annresp(const std::vector<char>& resp) {
     return std::get<BencodeDict>(decoded);
 }
 
-std::vector<char> _http_announce(const std::shared_ptr<TrackerParams>& params,
-                                 CURL* curl) {
+struct HttpResult {
+    std::vector<char> response;
+    CURLcode code;
+};
+
+HttpResult _http_announce(const std::shared_ptr<TrackerParams>& params,
+                          CURL* curl, uint16_t port) {
     std::vector<char> response;
 
-    std::string announce_url = build_http_announce_url(*params, curl, 6969);
-
-    std::cout << announce_url.c_str() << '\n';
+    std::string announce_url = build_http_announce_url(*params, curl, port);
 
     curl_easy_setopt(curl, CURLOPT_URL, announce_url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_cb);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "VORKUTORRENT/0.1");
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");  // allow gzip
+    curl_easy_setopt(curl, CURLOPT_ACCEPT_ENCODING, "");
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
 
     CURLcode res = curl_easy_perform(curl);
-    if (res != CURLE_OK) {
-        response.clear();  // erasing error messages is bad but i don't care
-        return response;
-    }
 
-    return response;
+    return {std::move(response), res};
 }
 
 void http_life(const std::shared_ptr<TrackerParams>& params) {
     // curl_global_init(0L);
     CURL* curl = curl_easy_init();
 
-    uint32_t interval = 180;  // reasonable default interval
+    uint16_t port = extract_port(params.get()->url);
+    if (!port) port = 6881;
+
+    uint32_t interval = 60;  // reasonable default interval
     for (;; std::this_thread::sleep_for(std::chrono::seconds(interval))) {
-        const std::vector<char> resp = _http_announce(params, curl);
-        if (resp.empty()) continue;
+        HttpResult res = _http_announce(params, curl, port);
+
+        if (res.code == CURLE_OPERATION_TIMEDOUT) {
+            if (port < 6889) {
+                ++port;
+                continue;
+            } else {
+                port = 6881;  // reset range
+                std::this_thread::sleep_for(std::chrono::seconds(interval));
+                continue;
+            }
+        }
+
+        const std::vector<char> resp = res.response;
+
+        if (resp.empty()) {
+            std::this_thread::sleep_for(std::chrono::seconds(interval));
+            continue;
+        }
 
         BencodeDict resp_dict = _decode_http_annresp(resp);
-        if (resp_dict.empty()) continue;
-
-        if (!std::holds_alternative<std::string>(resp_dict[PEERS_STR]))
+        if (resp_dict.empty()) {
+            std::this_thread::sleep_for(std::chrono::seconds(interval));
             continue;
+        }
+
+        if (!std::holds_alternative<std::string>(resp_dict[PEERS_STR])) {
+            std::this_thread::sleep_for(std::chrono::seconds(interval));
+            continue;
+        }
 
         if (std::holds_alternative<uint32_t>(resp_dict[INTERVAL_STR]))
             interval = std::get<uint32_t>(resp_dict[INTERVAL_STR]);

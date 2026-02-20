@@ -60,25 +60,14 @@ int main(int argc, char* argv[]) {
     std::vector<std::thread> tracker_threads;
 
     std::cout << "Infohash: " << hex_ih << "\n";
-    // for (const auto& i : infohash) std::cout << i;
-    // std::cout << std::endl;
 
-    // for (const auto& tracker : trackers) {
-    //     std::cout << tracker << '\n';
-    // }
+    for (const auto& tracker : trackers) {
+        auto params = std::make_shared<TrackerParams>(TrackerParams{
+            tracker, infohash, hex_ih, peer_id, torrent_size, peers_set_mutex,
+            download_mutex, total_downloaded, peers_set});
 
-    // return 0;
-
-    // std::cout << hex_ih << std::endl;
-    // for (const auto& tracker : trackers) {
-    const auto& tracker = *(std::next(trackers.begin(), 3));
-    std::cout << "We got " << tracker << std::endl;
-    auto params = std::make_shared<TrackerParams>(TrackerParams{
-        tracker, infohash, hex_ih, peer_id, torrent_size, peers_set_mutex,
-        download_mutex, total_downloaded, peers_set});
-
-    tracker_threads.emplace_back(tracker_life, params);
-    // }
+        tracker_threads.emplace_back(tracker_life, params);
+    }
 
     for (;;) {
         std::set<Peer> copy;
@@ -89,7 +78,8 @@ int main(int argc, char* argv[]) {
         }
 
         for (auto& peer : copy) {
-            std::cout << peer.ip << std::endl;
+            std::cout << "Peer found: " << peer.ip << ":" << peer.port
+                      << std::endl;
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(10));

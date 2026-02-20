@@ -325,13 +325,12 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
 }
 
 void udp_life(const std::shared_ptr<TrackerParams>& params) {
-    // std::cout << "Attempting connection to " << params.get()->url <<
-    // std::endl;
+    std::cout << "Attempting connection to " << params.get()->url << std::endl;
 
     // connect
     SocketConnectionUDP conn = connect_udp(params.get()->url);
 
-    // std::cout << "Connected to " << params.get()->url << std::endl;
+    std::cout << "Connected to " << params.get()->url << std::endl;
 
     // indefinite announce loop
     size_t iter = 0;
