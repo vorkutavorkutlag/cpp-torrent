@@ -162,6 +162,8 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
         offset = _read_u32(buffer, offset, ip);
         offset = _read_u16(buffer, offset, port);
 
+        std::cout << "UDP PEER: " << ip << ':' << port << std::endl;
+
         // no conversion, will be using big endian later anyway
         ip_addresses.push_back(ip);
         ports.push_back(port);

@@ -165,8 +165,8 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
             continue;
         }
 
-        if (std::holds_alternative<uint32_t>(resp_dict[INTERVAL_STR]))
-            interval = std::get<uint32_t>(resp_dict[INTERVAL_STR]);
+        if (std::holds_alternative<int64_t>(resp_dict[INTERVAL_STR]))
+            interval = std::get<int64_t>(resp_dict[INTERVAL_STR]);
 
         const std::string& peers = std::get<std::string>(resp_dict[PEERS_STR]);
 
@@ -176,6 +176,8 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
 
             memcpy(&ip, &peers[i], 4);
             memcpy(&port, &peers[i + 4], 2);
+
+            std::cout << "HTTP PEER: " << ip << ':' << port << std::endl;
 
             const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
             params.get()->peer_set.emplace(ip, port);

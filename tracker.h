@@ -82,37 +82,38 @@ inline std::uint64_t ntohll(std::uint64_t value) {
            ((value & 0xFF00000000000000ULL) >> 56);
 }
 
-size_t _write_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
+inline size_t _write_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
     memcpy(buffer + offset, &v, sizeof(uint16_t));
     return offset + sizeof(uint16_t);
 }
 
-size_t _write_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
+inline size_t _write_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
     memcpy(buffer + offset, &v, sizeof(uint32_t));
     return offset + sizeof(uint32_t);
 }
 
-size_t _write_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
+inline size_t _write_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
     memcpy(buffer + offset, &v, sizeof(uint64_t));
     return offset + sizeof(uint64_t);
 }
 
-size_t _write_20B(uint8_t* buffer, const size_t offset, const uint8_t v[]) {
+inline size_t _write_20B(uint8_t* buffer, const size_t offset,
+                         const uint8_t v[]) {
     memcpy(buffer + offset, v, 20);
     return offset + 20;
 }
 
-size_t _read_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
+inline size_t _read_u16(uint8_t* buffer, const size_t offset, uint16_t& v) {
     memcpy(&v, buffer + offset, sizeof(uint16_t));
     return offset + sizeof(uint16_t);
 }
 
-size_t _read_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
+inline size_t _read_u32(uint8_t* buffer, const size_t offset, uint32_t& v) {
     memcpy(&v, buffer + offset, sizeof(uint32_t));
     return offset + sizeof(uint32_t);
 }
 
-size_t _read_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
+inline size_t _read_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
     memcpy(&v, buffer + offset, sizeof(uint64_t));
     return offset + sizeof(uint64_t);
 }
