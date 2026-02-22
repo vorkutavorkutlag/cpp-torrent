@@ -77,6 +77,8 @@ int main(int argc, char* argv[]) {
             copy = peers_set;
         }
 
+        std::cout << "Main Iter" << std::endl;
+
         for (auto& peer : copy) {
             std::cout << "Peer found: " << peer.ip << ":" << peer.port
                       << std::endl;

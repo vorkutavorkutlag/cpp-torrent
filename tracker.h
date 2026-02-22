@@ -120,11 +120,11 @@ inline size_t _read_u64(uint8_t* buffer, const size_t offset, uint64_t& v) {
 
 inline int determine_tracker_type(const std::string url) {
     if (url.rfind("udp", 0) == 0) return 1;
-    if (url.rfind("http", 0) == 0 || url.rfind("https", 0)) return 2;
+    if (url.rfind("http", 0) == 0 || url.rfind("https", 0) == 0) return 2;
     return -1;
 }
 
-std::set<std::string> extract_trackers(BencodeDict torrent_dict);
+std::set<std::string> extract_trackers(BencodeDict& torrent_dict);
 void tracker_life(const std::shared_ptr<TrackerParams>& params);
 void udp_life(const std::shared_ptr<TrackerParams>& params);
 void http_life(const std::shared_ptr<TrackerParams>& params);

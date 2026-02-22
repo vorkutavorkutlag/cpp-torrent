@@ -29,7 +29,7 @@ struct SocketConnectionUDP {
     uint16_t port;
 };
 
-std::set<std::string> extract_trackers(BencodeDict torrent_dict) {
+std::set<std::string> extract_trackers(BencodeDict& torrent_dict) {
     std::set<std::string> trackers;
 
     trackers.insert(std::get<std::string>(torrent_dict[TF_String[ANNOUNCE]]));
@@ -155,7 +155,7 @@ IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
     std::vector<uint32_t> ip_addresses;
     std::vector<uint16_t> ports;
 
-    while (offset <= recv_len) {
+    while (offset + pair_len <= recv_len) {
         uint32_t ip;
         uint16_t port;
 
