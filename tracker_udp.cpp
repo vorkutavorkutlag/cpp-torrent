@@ -1,6 +1,3 @@
-#include "tracker.h"
-
-// #include <arpa/inet.h>
 #include <netdb.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -16,6 +13,7 @@
 
 #include "bencode.h"
 #include "constants.h"
+#include "tracker.h"
 
 struct HostPortPair {
     const std::string host;
@@ -278,6 +276,9 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
         real_downloaded = params.get()->downloaded;
     }
 
+    // temp
+    real_downloaded = 0;
+
     IPv4_AnnounceRequest annreq = {
         conn.connection_id,
         static_cast<uint32_t>(UDP_ACTION::ANNOUNCE),
@@ -344,11 +345,15 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
         IPv4_AnnounceResponse resp =
             announce_udp(params, conn, event, conn.port);
 
-        const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
-        for (size_t i = 0; i < resp.ip_addresses.size(); i++) {
-            params.get()->peer_set.emplace(resp.ip_addresses[i], resp.ports[i]);
+        {
+            const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
+            for (size_t i = 0; i < resp.ip_addresses.size(); i++) {
+                params.get()->peer_set.emplace(resp.ip_addresses[i],
+                                               resp.ports[i]);
+            }
         }
 
+        std::cout << "interval: " << resp.interval << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(resp.interval));
     }
 }

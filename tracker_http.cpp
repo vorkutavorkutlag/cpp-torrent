@@ -168,6 +168,8 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
         if (std::holds_alternative<int64_t>(resp_dict[INTERVAL_STR]))
             interval = std::get<int64_t>(resp_dict[INTERVAL_STR]);
 
+        std::cout << "interval: " << interval << std::endl;
+
         const std::string& peers = std::get<std::string>(resp_dict[PEERS_STR]);
 
         for (size_t i = 0; i + 6 <= peers.size(); i += 6) {

@@ -61,13 +61,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "Infohash: " << hex_ih << "\n";
 
-    for (const auto& tracker : trackers) {
-        auto params = std::make_shared<TrackerParams>(TrackerParams{
-            tracker, infohash, hex_ih, peer_id, torrent_size, peers_set_mutex,
-            download_mutex, total_downloaded, peers_set});
+    // for (const auto& tracker : trackers) {
+    const auto& tracker = *std::next(trackers.begin(), 15);
+    std::cout << "Tracker: " << tracker << std::endl;
+    auto params = std::make_shared<TrackerParams>(TrackerParams{
+        tracker, infohash, hex_ih, peer_id, torrent_size, peers_set_mutex,
+        download_mutex, total_downloaded, peers_set});
 
-        tracker_threads.emplace_back(tracker_life, params);
-    }
+    tracker_threads.emplace_back(tracker_life, params);
+    // }
 
     for (;;) {
         std::set<Peer> copy;
