@@ -27,6 +27,10 @@ struct SocketConnectionUDP {
     uint16_t port;
 };
 
+bool dead_conn(const SocketConnectionUDP& conn) {
+    return (!conn.connection_id && conn.sockfd == -1 && !conn.port);
+}
+
 std::set<std::string> extract_trackers(BencodeDict& torrent_dict) {
     std::set<std::string> trackers;
 
@@ -49,7 +53,7 @@ uint32_t generate_rand_transaction_id() {
 
 int _send_announce_udp(SocketConnectionUDP& conn,
                        const IPv4_AnnounceRequest& annreq) {
-    uint8_t buffer[(size_t)(UDP_BUFFER::ANNOUNCE_REQUEST)];
+    uint8_t buffer[UDP_BUF_ANNREQ];
 
     uint64_t connection_id = htonll(annreq.connection_id);
     uint32_t action = htonl(annreq.action);
@@ -330,8 +334,12 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
 void udp_life(const std::shared_ptr<TrackerParams>& params) {
     std::cout << "Attempting connection to " << params.get()->url << std::endl;
 
-    // connect
-    SocketConnectionUDP conn = connect_udp(params.get()->url);
+    SocketConnectionUDP conn{};
+    constexpr size_t retry = 60;
+    for (;; std::this_thread::sleep_for(std::chrono::seconds(retry))) {
+        SocketConnectionUDP conn = connect_udp(params.get()->url);
+        if (!dead_conn(conn)) break;
+    }
 
     std::cout << "Connected to " << params.get()->url << std::endl;
 
