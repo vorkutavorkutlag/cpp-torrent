@@ -132,8 +132,8 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
     uint16_t port = extract_port(params.get()->url);
     if (!port) port = 6881;
 
-    uint32_t interval = 60;  // reasonable default interval
-    for (;; std::this_thread::sleep_for(std::chrono::seconds(interval))) {
+    uint32_t real_interval = 60;  // reasonable default interval
+    for (;; std::this_thread::sleep_for(std::chrono::seconds(real_interval))) {
         HttpResult res = _http_announce(params, curl, port);
 
         if (res.code == CURLE_OPERATION_TIMEDOUT) {
@@ -142,7 +142,7 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
                 continue;
             } else {
                 port = 6881;  // reset range
-                std::this_thread::sleep_for(std::chrono::seconds(interval));
+                std::this_thread::sleep_for(std::chrono::seconds(real_interval));
                 continue;
             }
         }
@@ -150,25 +150,27 @@ void http_life(const std::shared_ptr<TrackerParams>& params) {
         const std::vector<char> resp = res.response;
 
         if (resp.empty()) {
-            std::this_thread::sleep_for(std::chrono::seconds(interval));
+            std::this_thread::sleep_for(std::chrono::seconds(real_interval));
             continue;
         }
 
         BencodeDict resp_dict = _decode_http_annresp(resp);
         if (resp_dict.empty()) {
-            std::this_thread::sleep_for(std::chrono::seconds(interval));
+            std::this_thread::sleep_for(std::chrono::seconds(real_interval));
             continue;
         }
 
         if (!std::holds_alternative<std::string>(resp_dict[PEERS_STR])) {
-            std::this_thread::sleep_for(std::chrono::seconds(interval));
+            std::this_thread::sleep_for(std::chrono::seconds(real_interval));
             continue;
         }
 
-        if (std::holds_alternative<int64_t>(resp_dict[INTERVAL_STR]))
-            interval = std::get<int64_t>(resp_dict[INTERVAL_STR]);
+        if (std::holds_alternative<int64_t>(resp_dict[INTERVAL_STR])) {
+            uint32_t interval = std::get<int64_t>(resp_dict[INTERVAL_STR]);
+            real_interval = interval ? interval : real_interval; // ensure non-zero interval
+        }
 
-        std::cout << "interval: " << interval << std::endl;
+        std::cout << "interval: " << real_interval << std::endl;
 
         const std::string& peers = std::get<std::string>(resp_dict[PEERS_STR]);
 

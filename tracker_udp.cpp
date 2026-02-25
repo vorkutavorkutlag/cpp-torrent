@@ -332,7 +332,8 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
 }
 
 void udp_life(const std::shared_ptr<TrackerParams>& params) {
-    std::cout << "Attempting connection to " << params.get()->url << std::endl;
+    std::cout << "Attempting UDP connection to " << params.get()->url
+              << std::endl;
 
     SocketConnectionUDP conn{};
     constexpr size_t retry = 60;
@@ -341,10 +342,11 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
         if (!dead_conn(conn)) break;
     }
 
-    std::cout << "Connected to " << params.get()->url << std::endl;
+    std::cout << "UDP-Connected to " << params.get()->url << std::endl;
 
     // indefinite announce loop
     size_t iter = 0;
+    uint32_t real_interval = 60;
     for (;; iter++) {
         uint32_t event = iter == 0
                              ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
@@ -352,6 +354,8 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
 
         IPv4_AnnounceResponse resp =
             announce_udp(params, conn, event, conn.port);
+
+        if (resp.interval != 0) real_interval = resp.interval;
 
         {
             const std::lock_guard<std::mutex> lock(params.get()->ps_mut);
@@ -361,7 +365,7 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
             }
         }
 
-        std::cout << "interval: " << resp.interval << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(resp.interval));
+        std::cout << "udp-interval: " << real_interval << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(real_interval));
     }
 }
