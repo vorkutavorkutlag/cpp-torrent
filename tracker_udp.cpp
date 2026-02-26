@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <set>
 #include <variant>
 
@@ -31,6 +32,11 @@ bool dead_conn(const SocketConnectionUDP& conn) {
     return (!conn.connection_id && conn.sockfd == -1 && !conn.port);
 }
 
+bool empty_resp(const IPv4_AnnounceResponse& annresp) {
+    // the rest is also default but this should be enough
+    return (!annresp.action && !annresp.interval && !annresp.transaction_id);
+}
+
 std::set<std::string> extract_trackers(BencodeDict& torrent_dict) {
     std::set<std::string> trackers;
 
@@ -47,8 +53,9 @@ std::set<std::string> extract_trackers(BencodeDict& torrent_dict) {
 }
 
 uint32_t generate_rand_transaction_id() {
-    srand(time(NULL) * getpid());
-    return rand();
+    static std::mt19937 rng(std::random_device{}());
+    static std::uniform_int_distribution<uint32_t> dist;
+    return dist(rng);
 }
 
 int _send_announce_udp(SocketConnectionUDP& conn,
@@ -111,7 +118,7 @@ int _send_conreq_udp(SocketConnectionUDP& conn,
                   reinterpret_cast<sockaddr*>(&conn.servaddr), len);
 }
 
-IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP conn) {
+IPv4_AnnounceResponse _recv_annreq_udp(SocketConnectionUDP& conn) {
     uint8_t buffer[(size_t)UDP_BUFFER::ANNOUNCE_RESPONSE];
 
     uint32_t action;
@@ -272,16 +279,13 @@ SocketConnectionUDP connect_udp(std::string url) {
 }
 
 IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
-                                   SocketConnectionUDP conn, uint32_t event,
+                                   SocketConnectionUDP& conn, uint32_t event,
                                    uint16_t port) {
     uint32_t real_downloaded;
     {
         const std::lock_guard<std::mutex> lock(params.get()->d_mut);
         real_downloaded = params.get()->downloaded;
     }
-
-    // temp
-    real_downloaded = 0;
 
     IPv4_AnnounceRequest annreq = {
         conn.connection_id,
@@ -299,31 +303,31 @@ IPv4_AnnounceResponse announce_udp(std::shared_ptr<TrackerParams> params,
         port,
     };
 
-    // std::cout << "Sent Announce:\n"
-    //           << annreq.connection_id << "\n"
-    //           << annreq.action << "\n"
-    //           << annreq.info_hash << "\n"
-    //           << annreq.peer_id << "\n"
-    //           << annreq.downloaded << "\n"
-    //           << annreq.left << "\n"
-    //           << annreq.uploaded << "\n"
-    //           << annreq.event << "\n"
-    //           << annreq.ip_address << "\n"
-    //           << annreq.key << "\n"
-    //           << annreq.num_want << "\n"
-    //           << annreq.port << std::endl;
+    std::cout << "Sent Announce:\n"
+              << annreq.connection_id << "\n"
+              << annreq.action << "\n"
+              << annreq.info_hash << "\n"
+              << annreq.peer_id << "\n"
+              << annreq.downloaded << "\n"
+              << annreq.left << "\n"
+              << annreq.uploaded << "\n"
+              << annreq.event << "\n"
+              << annreq.ip_address << "\n"
+              << annreq.key << "\n"
+              << annreq.num_want << "\n"
+              << annreq.port << std::endl;
 
     int err = _send_announce_udp(conn, annreq);
     if (err == -1) return IPv4_AnnounceResponse{};
 
-    const IPv4_AnnounceResponse& annresp = _recv_annreq_udp(conn);
-    // std::cout << "Received Announce:\n"
-    //           << annresp.action << "\n"
-    //           << annresp.transaction_id << "\n"
-    //           << annresp.interval << "\n"
-    //           << annresp.leechers << "\n"
-    //           << annresp.seeders << "\n"
-    //           << std::endl;
+    const IPv4_AnnounceResponse annresp = _recv_annreq_udp(conn);
+    std::cout << "Received Announce:\n"
+              << annresp.action << "\n"
+              << annresp.transaction_id << "\n"
+              << annresp.interval << "\n"
+              << annresp.leechers << "\n"
+              << annresp.seeders << "\n"
+              << std::endl;
 
     if (annresp.transaction_id != annreq.transaction_id)
         return IPv4_AnnounceResponse{};
@@ -347,13 +351,19 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
     // indefinite announce loop
     size_t iter = 0;
     uint32_t real_interval = 60;
-    for (;; iter++) {
+    for (;; iter++,
+            std::this_thread::sleep_for(std::chrono::seconds(real_interval))) {
         uint32_t event = iter == 0
                              ? static_cast<uint32_t>(ANNOUNCE_DEFAULTS::STARTED)
                              : static_cast<uint32_t>(ANNOUNCE_DEFAULTS::NONE);
 
         IPv4_AnnounceResponse resp =
             announce_udp(params, conn, event, conn.port);
+
+        if (empty_resp(resp)) {
+            std::cout << "EMPTY REPSONSE..\n";
+            continue;
+        }
 
         if (resp.interval != 0) real_interval = resp.interval;
 
@@ -366,6 +376,5 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
         }
 
         std::cout << "udp-interval: " << real_interval << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(real_interval));
     }
 }

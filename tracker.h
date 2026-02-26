@@ -68,7 +68,11 @@ struct TrackerParams {
 };
 
 inline uint64_t htonll(uint64_t x) {
-    return ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32));
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    return ((uint64_t)htonl(x & 0xFFFFFFFFULL) << 32) | htonl(x >> 32);
+#else
+    return x;
+#endif
 }
 
 inline std::uint64_t ntohll(std::uint64_t value) {
