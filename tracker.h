@@ -139,7 +139,6 @@ inline void tracker_life(const std::shared_ptr<TrackerParams>& params) {
             udp_life(params);
             break;
         case 2:
-            return;
             http_life(params);
             break;
         default:

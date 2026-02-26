@@ -339,11 +339,15 @@ void udp_life(const std::shared_ptr<TrackerParams>& params) {
     std::cout << "Attempting UDP connection to " << params.get()->url
               << std::endl;
 
-    SocketConnectionUDP conn{};
-    constexpr size_t retry = 60;
-    for (;; std::this_thread::sleep_for(std::chrono::seconds(retry))) {
-        SocketConnectionUDP conn = connect_udp(params.get()->url);
-        if (!dead_conn(conn)) break;
+    // initial connection
+    SocketConnectionUDP conn = connect_udp(params.get()->url);
+
+    if (dead_conn(conn)) {
+        constexpr size_t retry = 60;
+        for (;; std::this_thread::sleep_for(std::chrono::seconds(retry))) {
+            SocketConnectionUDP conn = connect_udp(params.get()->url);
+            if (!dead_conn(conn)) break;
+        }
     }
 
     std::cout << "UDP-Connected to " << params.get()->url << std::endl;
